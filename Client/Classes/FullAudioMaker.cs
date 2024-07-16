@@ -1,60 +1,74 @@
 using NAudio.Wave;
+using System;
+using System.IO;
 
-namespace Client.Classes;
+namespace Client.Classes
+{
+    public class FullAudioMaker
+    { 
+        private WaveInEvent waveSource = null;
+        private WaveFileWriter waveFile = null;
+        private string outputFilePath;
 
-public class FullAudioMaker
-{ 
-    static WaveInEvent waveSource = null;
-    static WaveFileWriter waveFile = null;
-    static string outputFilePath = "recorded_audio.wav";
-    static bool isRecording = false;
-    
-
-    public void StartRecording()
-    {
-        waveSource = new WaveInEvent();
-        waveSource.WaveFormat = new WaveFormat(44100, 1);
-
-        waveSource.DataAvailable += (sender, e) =>
+        public void StartRecording()
         {
-            if (waveFile != null)
+            // Generate a unique filename for this recording session
+            outputFilePath = $"recorded_audio_{DateTime.Now:yyyyMMddHHmmss}.wav";
+
+            try
             {
-                waveFile.Write(e.Buffer, 0, e.BytesRecorded);
-                waveFile.Flush();
+                waveSource = new WaveInEvent();
+                waveSource.WaveFormat = new WaveFormat(44100, 1);
+
+                waveSource.DataAvailable += (sender, e) =>
+                {
+                    if (waveFile != null)
+                    {
+                        waveFile.Write(e.Buffer, 0, e.BytesRecorded);
+                        waveFile.Flush();
+                    }
+                };
+
+                waveFile = new WaveFileWriter(outputFilePath, waveSource.WaveFormat);
+
+                waveSource.StartRecording();
             }
-        };
-
-        waveFile = new WaveFileWriter(outputFilePath, waveSource.WaveFormat);
-
-        waveSource.StartRecording();
-        isRecording = true;
-        Console.WriteLine("Recording started. Press 'N' to stop.");
-    }
-
-    public void StopRecording()
-    {
-        waveSource.StopRecording();
-        waveSource.Dispose();
-        waveSource = null;
-        waveFile.Dispose();
-        waveFile = null;
-        isRecording = false;
-        Console.WriteLine("Recording stopped.");
-    }
-
-    public void PlayRecording()
-    {
-        Console.WriteLine("Playing recorded audio...");
-        using (var audioFile = new AudioFileReader(outputFilePath))
-        using (var outputDevice = new WaveOutEvent())
-        {
-            outputDevice.Init(audioFile);
-            outputDevice.Play();
-            while (outputDevice.PlaybackState == PlaybackState.Playing)
+            catch (Exception ex)
             {
-                Thread.Sleep(100);
+                Console.WriteLine($"Error starting recording: {ex.Message}");
+                StopRecording();
             }
         }
-        Console.WriteLine("Playback finished.");
+
+        public void StopRecording()
+        {
+            waveSource?.StopRecording();
+            waveSource?.Dispose();
+            waveSource = null;
+
+            waveFile?.Dispose();
+            waveFile = null;
+        }
+
+        public byte[] GetFullAudioData()
+        {
+            if (File.Exists(outputFilePath))
+            {
+                try
+                {
+                    return File.ReadAllBytes(outputFilePath);
+                    File.Delete(outputFilePath);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading audio file: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("No audio file found. Please record audio first.");
+            }
+            return new byte[0];
+        }
     }
 }

@@ -69,30 +69,44 @@ public class TcpServer
             }
         }
     }
-
     private async Task HandleClientAsync(ConnectedClient client)
     {
         try
         {
             using (NetworkStream stream = client.TcpClient.GetStream())
             {
-                byte[] buffer = new byte[4096]; // Increased buffer size
+                byte[] headerBuffer = new byte[4];
                 while (!cts.Token.IsCancellationRequested)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cts.Token);
-                    if (bytesRead > 0)
+                    int headerBytesRead = await stream.ReadAsync(headerBuffer, 0, 4, cts.Token);
+                    if (headerBytesRead == 4)
                     {
-                        // Save audio to GridFS
-                        string filename = $"audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.raw";
-                        await gridFS.UploadFromBytesAsync(filename, buffer.Take(bytesRead).ToArray());
+                        if (headerBuffer[0] == 0xAA && headerBuffer[1] == 0xAA && headerBuffer[2] == 0xAA && headerBuffer[3] == 0xAA)
+                        {
+                            // Read the length of the audio data
+                            byte[] lengthBuffer = new byte[4];
+                            await stream.ReadAsync(lengthBuffer, 0, 4, cts.Token);
+                            int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
 
-                        // Broadcast to other clients
-                        await BroadcastAudioAsync(client.Id, buffer, bytesRead);
+                            // Real-time audio transmission
+                            byte[] audioBuffer = new byte[audioLength];
+                            int bytesRead = await stream.ReadAsync(audioBuffer, 0, audioLength, cts.Token);
+                            if (bytesRead == audioLength)
+                            {
+                                // Broadcast to other clients, but don't save
+                                await BroadcastAudioAsync(client.Id, audioBuffer, bytesRead);
+                            }
+                        }
+                        else if (headerBuffer[0] == 0xFF && headerBuffer[1] == 0xFF && headerBuffer[2] == 0xFF && headerBuffer[3] == 0xFF)
+                        {
+                            // Full audio transmission
+                            await HandleFullAudioTransmission(client, stream);
+                        }
                     }
                 }
             }
         }
-        // ... rest of the method remains the same
+
         catch (OperationCanceledException)
         {
             // Server is shutting down
@@ -109,6 +123,46 @@ public class TcpServer
                 Console.WriteLine($"Client disconnected. ID: {client.Id}");
                 client.TcpClient.Close();
             }
+        }
+    }
+    private async Task HandleFullAudioTransmission(ConnectedClient client, NetworkStream stream)
+    {
+        try
+        {
+            // Read the length of the audio data
+            byte[] lengthBuffer = new byte[4];
+            await stream.ReadAsync(lengthBuffer, 0, 4);
+            int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
+
+            // Read the full audio data
+            byte[] audioBuffer = new byte[audioLength];
+            int bytesRead = 0;
+            while (bytesRead < audioLength)
+            {
+                int chunkSize = await stream.ReadAsync(audioBuffer, bytesRead, audioLength - bytesRead);
+                bytesRead += chunkSize;
+            }
+
+            // Create a directory to store audio files if it doesn't exist
+            string audioDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AudioFiles");
+            Directory.CreateDirectory(audioDirectory);
+
+            // Generate a unique filename
+            string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
+            string filePath = Path.Combine(audioDirectory, filename);
+
+            // Save the audio file
+            await File.WriteAllBytesAsync(filePath, audioBuffer);
+
+            Console.WriteLine($"Received and saved full audio ({audioLength} bytes) from client {client.Id}");
+            Console.WriteLine($"File saved at: {filePath}");
+
+            // Optionally, you can broadcast this audio to other clients
+            // await BroadcastAudioAsync(client.Id, audioBuffer, audioLength);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling full audio transmission from client {client.Id}: {ex.Message}");
         }
     }
 

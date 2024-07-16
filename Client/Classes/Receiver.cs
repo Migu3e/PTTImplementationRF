@@ -1,27 +1,32 @@
 using NAudio.Wave;
+using System;
 
-public class Receiver
+namespace Client.Classes
 {
-    private IWavePlayer waveOut;
-    private BufferedWaveProvider bufferedWaveProvider;
-
-    public Receiver()
+    public class Receiver
     {
-        waveOut = new WaveOutEvent();
-        bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 2)); // Match Sender's format
-        bufferedWaveProvider.BufferDuration = TimeSpan.FromSeconds(0.5); // Reduce latency
-        bufferedWaveProvider.DiscardOnBufferOverflow = true;
-        waveOut.Init(bufferedWaveProvider);
-        waveOut.Play();
-    }
+        private IWavePlayer waveOut;
+        private BufferedWaveProvider bufferedWaveProvider;
 
-    public void PlayAudio(byte[] buffer, int offset, int count)
-    {
-        bufferedWaveProvider.AddSamples(buffer, offset, count);
-    }
+        public Receiver()
+        {
+            waveOut = new WaveOutEvent();
+            bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 16, 1)); // Mono, 16-bit, 44.1kHz
+            bufferedWaveProvider.BufferDuration = TimeSpan.FromMilliseconds(1000); // Adjust buffer duration
+            bufferedWaveProvider.DiscardOnBufferOverflow = true;
+            waveOut.Init(bufferedWaveProvider);
+            waveOut.Play();
+        }
 
-    public void Stop()
-    {
-        waveOut.Stop();
+        public void PlayAudio(byte[] buffer, int offset, int count)
+        {
+            bufferedWaveProvider.AddSamples(buffer, offset, count);
+        }
+
+        public void Stop()
+        {
+            waveOut.Stop();
+            waveOut.Dispose();
+        }
     }
 }

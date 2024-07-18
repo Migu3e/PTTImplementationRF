@@ -1,16 +1,19 @@
+using Client.Interfaces;
 using NAudio.Wave;
 
-public class Sender
+namespace Client.Classes;
+
+public class Sender : ISender
 {
     private WaveInEvent waveIn;
     private List<byte> buffer = new List<byte>();
-    public const int CHUNK_SIZE = 16384; // Increased chunk size
+    public const int CHUNK_SIZE = 16384;
 
     public Sender()
     {
         waveIn = new WaveInEvent();
-        waveIn.WaveFormat = new WaveFormat(44100, 16, 1); // 44.1kHz, 16-bit, mono
-        waveIn.BufferMilliseconds = 1000; // Increased buffer size
+        waveIn.WaveFormat = new WaveFormat(44100, 16, 1);
+        waveIn.BufferMilliseconds = 1000;
         waveIn.DataAvailable += WaveIn_DataAvailable;
     }
 

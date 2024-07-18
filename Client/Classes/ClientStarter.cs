@@ -1,40 +1,63 @@
-﻿using System;
+using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using Client.Classes;
+using Client.Const;
+using Client.Interfaces;
 
-namespace Client
+namespace Client.Classes
 {
-    class Program
+    public class ClientStarter : IClientStarter
     {
-        static bool isRunning = true;
-        static bool isTransmitting = false;
+        private readonly IFullAudioMaker _fullAudioMaker;
+        private readonly IReceiver _receiver;
+        private readonly ISender _sender;
 
-        static async Task Main(string[] args)
+        public ClientStarter(IFullAudioMaker fullAudioMaker, IReceiver receiver, ISender sender)
         {
-            FullAudioMaker fullAudioMaker = new FullAudioMaker();
-            Receiver receiver = new Receiver();
-            Sender sender = new Sender();
+            _fullAudioMaker = fullAudioMaker;
+            _receiver = receiver;
+            _sender = sender;
+        }
 
-            // Connect to the TCP server
-            TcpClient tcpClient = new TcpClient();
+        public async Task StartAsync()
+        {
+            using TcpClient tcpClient = new TcpClient();
+            if (!await ConnectToServer(tcpClient))
+                return;
+
+            using NetworkStream stream = tcpClient.GetStream();
+
+            _ = Task.Run(() => ReceiveAudioFromServer(stream, _receiver));
+            await HandleUserInput(stream, _sender, _fullAudioMaker);
+
+            _sender.Stop();
+            _receiver.Stop();
+            tcpClient.Close();
+            Console.WriteLine(Constants.DisconnectedMessage);
+            Console.WriteLine(Constants.ProgramExitedMessage);
+        }
+
+        private async Task<bool> ConnectToServer(TcpClient tcpClient)
+        {
             try
             {
-                await tcpClient.ConnectAsync("localhost", 8080);
-                Console.WriteLine("Connected to TCP server");
+                await tcpClient.ConnectAsync(Constants.ServerIP, Constants.ServerPort);
+                Console.WriteLine(Constants.ConnectedMessage);
+                return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to connect to TCP server: {ex.Message}");
-                return;
+                Console.WriteLine($"{Constants.FailedToConnectMessage} {ex.Message}");
+                return false;
             }
+        }
 
-            NetworkStream stream = tcpClient.GetStream();
+        private async Task HandleUserInput(NetworkStream stream, ISender sender, IFullAudioMaker fullAudioMaker)
+        {
+            bool isRunning = true;
+            bool isTransmitting = false;
 
-            // Start a task to receive audio from the server
-            _ = Task.Run(() => ReceiveAudioFromServer(stream, receiver));
-
-            Console.WriteLine("Press 'T' to start/stop transmission and recording, 'Q' to quit.");
+            Console.WriteLine(Constants.PressMessage);
 
             while (isRunning)
             {
@@ -49,14 +72,15 @@ namespace Client
                             {
                                 sender.Start();
                                 fullAudioMaker.StartRecording();
-                                Console.WriteLine("Transmission and recording started. Press 'T' to stop.");
+                                Console.WriteLine(Constants.TransmissionStartedMessage);
                             }
                             else
                             {
+                                await Task.Delay(50);
                                 sender.Stop();
                                 fullAudioMaker.StopRecording();
                                 await SendFullAudioToServer(stream, fullAudioMaker);
-                                Console.WriteLine("Transmission and recording stopped. Full audio sent to server.");
+                                Console.WriteLine(Constants.TransmissionStoppedMessage);
                             }
                             break;
                         case ConsoleKey.Q:
@@ -72,17 +96,9 @@ namespace Client
 
                 await Task.Delay(10);
             }
-
-            // Close the TCP connection
-            sender.Stop();
-            receiver.Stop();
-            tcpClient.Close();
-            Console.WriteLine("Disconnected from TCP server");
-
-            Console.WriteLine("Program exited.");
         }
 
-        static async Task TransmitAudioToServer(NetworkStream stream, Sender sender)
+        private async Task TransmitAudioToServer(NetworkStream stream, ISender sender)
         {
             byte[] buffer = new byte[Sender.CHUNK_SIZE];
             if (sender.IsDataAvailable())
@@ -90,48 +106,41 @@ namespace Client
                 int bytesRead = sender.ReadAudio(buffer, 0, buffer.Length);
                 if (bytesRead > 0)
                 {
-                    // Send a header to indicate real-time audio transmission
                     byte[] header = new byte[] { 0xAA, 0xAA, 0xAA, 0xAA };
                     await stream.WriteAsync(header, 0, header.Length);
 
-                    // Send the length of the audio data
                     byte[] lengthBytes = BitConverter.GetBytes(bytesRead);
                     await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length);
 
-                    // Send the audio data
                     await stream.WriteAsync(buffer, 0, bytesRead);
                 }
             }
         }
 
-        static async Task SendFullAudioToServer(NetworkStream stream, FullAudioMaker fullAudioMaker)
+        private async Task SendFullAudioToServer(NetworkStream stream, IFullAudioMaker fullAudioMaker)
         {
             byte[] fullAudio = fullAudioMaker.GetFullAudioData();
-            
             if (fullAudio.Length == 0)
             {
-                Console.WriteLine("No audio data to send.");
+                Console.WriteLine(Constants.NoAudioDataMessage);
                 return;
             }
 
-            // Send a header to indicate full audio transmission
             byte[] header = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF };
             await stream.WriteAsync(header, 0, header.Length);
-            
-            // Send the length of the audio data
+
             byte[] lengthBytes = BitConverter.GetBytes(fullAudio.Length);
             await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length);
-            
-            // Send the full audio data
+
             await stream.WriteAsync(fullAudio, 0, fullAudio.Length);
-            
+
             Console.WriteLine($"Sent full audio ({fullAudio.Length} bytes) to server.");
         }
 
-        static async Task ReceiveAudioFromServer(NetworkStream stream, Receiver receiver)
+        private async Task ReceiveAudioFromServer(NetworkStream stream, IReceiver receiver)
         {
             byte[] buffer = new byte[4096];
-            while (isRunning)
+            while (true)
             {
                 try
                 {
@@ -143,8 +152,8 @@ namespace Client
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error receiving audio: {ex.Message}");
-                    if (!isRunning) break;
+                    Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
+                    break;
                 }
             }
         }

@@ -15,7 +15,7 @@ public class Sender : ISender
     {
         waveIn = new WaveInEvent();
         waveIn.WaveFormat = new WaveFormat(44100, 16, 1);
-        waveIn.BufferMilliseconds = 1000;
+        waveIn.BufferMilliseconds = 10;
         waveIn.DataAvailable += WaveIn_DataAvailable;
     }
 
@@ -54,7 +54,7 @@ public class Sender : ISender
     }
     public async Task TransmitAudioToServer(NetworkStream stream, ISender sender)
     {
-        byte[] buffer = new byte[Sender.CHUNK_SIZE];
+        byte[] buffer = new byte[CHUNK_SIZE];
         if (sender.IsDataAvailable())
         {
             int bytesRead = sender.ReadAudio(buffer, 0, buffer.Length);
@@ -87,7 +87,7 @@ public class Sender : ISender
 
         await stream.WriteAsync(fullAudio, 0, fullAudio.Length);
 
-        Console.WriteLine($"Sent full audio ({fullAudio.Length} bytes) to server.");
+        Console.WriteLine($"{Constants.SendAudioToServer} ({fullAudio.Length} bytes).");
     }
 
 }

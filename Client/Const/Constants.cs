@@ -12,6 +12,7 @@ public static class Constants
     public const string TransmissionStoppedMessage = "Transmission and recording stopped. Full audio sent to server.";
     public const string DisconnectedMessage = "Disconnected from TCP server";
     public const string ProgramExitedMessage = "Program exited.";
+    public const string SendAudioToServer = "Sent full audio to server";
     public const string NoAudioDataMessage = "No audio data to send.";
 }
 

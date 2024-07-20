@@ -45,7 +45,7 @@ public class Receiver : IReceiver
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
+                Console.WriteLine($"{ConstString.ErrorMessage} {ex.Message}");
                 break;
             }
         }

@@ -24,7 +24,7 @@ namespace Client.Classes
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
+                Console.WriteLine($"{ConstString.ErrorMessage} {ex.Message}");
                 StopRecording();
             }
         }
@@ -49,7 +49,7 @@ namespace Client.Classes
             }
             else
             {
-                Console.WriteLine(Constants.NoAudioDataMessage);
+                Console.WriteLine(ConstString.NoAudioDataMessage);
                 return new byte[0];
             }
         }

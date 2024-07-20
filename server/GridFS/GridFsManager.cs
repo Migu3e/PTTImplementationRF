@@ -1,8 +1,8 @@
+using System.Text;
 using server.Const;
 using server.Interface;
-using System.Text;
 
-namespace server.Classes.AudioHandler;
+namespace server.GridFS;
 
 public class GridFsManager : IGridFsManager
 {
@@ -26,6 +26,8 @@ public class GridFsManager : IGridFsManager
         }
     }
 
+    
+    // i cant explain WTF is going here, but it works (something with file not being corrupted).
     private async Task WriteWavHeaderAsync(Stream stream, int dataSize)
     {
         // RIFF header
@@ -66,13 +68,5 @@ public class GridFsManager : IGridFsManager
         await stream.WriteAsync(bytes, 0, bytes.Length);
     }
 
-    public async Task<byte[]> GetAudioAsync(string filename)
-    {
-        string filePath = Path.Combine(audioDirectory, filename);
-        if (File.Exists(filePath))
-        {
-            return await File.ReadAllBytesAsync(filePath);
-        }
-        throw new FileNotFoundException($"Audio file not found: {filename}");
-    }
+
 }

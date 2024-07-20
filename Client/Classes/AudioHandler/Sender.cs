@@ -71,7 +71,7 @@ public class Sender : ISender
         byte[] fullAudio = fullAudioMaker.GetFullAudioData();
         if (fullAudio.Length == 0)
         {
-            Console.WriteLine(Constants.NoAudioDataMessage);
+            Console.WriteLine(ConstString.NoAudioDataMessage);
             return;
         }
 
@@ -83,6 +83,6 @@ public class Sender : ISender
 
         await stream.WriteAsync(fullAudio, 0, fullAudio.Length);
 
-        Console.WriteLine(Constants.SendAudioToServer);
+        Console.WriteLine(ConstString.SendAudioToServer);
     }
 }

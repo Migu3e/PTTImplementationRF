@@ -1,15 +1,10 @@
 // ClientManager.cs
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
+
+using System.Net;
 using server.Const;
 using server.Interface;
 
-namespace server.Classes;
-
-using System.Net;
+namespace server.Classes.ClientHandler;
 
 public class ClientManager : IClientManager
 {

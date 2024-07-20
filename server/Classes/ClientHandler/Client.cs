@@ -1,9 +1,8 @@
 using System.Net.Sockets;
 
-namespace server.Classes;
+namespace server.Classes.ClientHandler;
 
 // Client.cs
-using System.Net.Sockets;
 
 public class Client
 {

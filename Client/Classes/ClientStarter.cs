@@ -11,7 +11,7 @@ namespace Client.Classes
         private readonly IFullAudioMaker _fullAudioMaker;
         private readonly IReceiver _receiver;
         private readonly ISender _sender;
-        private byte currentChannel = 1; // Default to channel 1
+        private byte currentChannel = 1;
 
 
 
@@ -24,38 +24,32 @@ namespace Client.Classes
 
         public async Task StartAsync()
         {
-            while (true)
+            using TcpClient tcpClient = new TcpClient();
+            if (!await ConnectToServer(tcpClient))
             {
-                using TcpClient tcpClient = new TcpClient();
-                if (!await ConnectToServer(tcpClient))
-                {
-                    Console.WriteLine("Failed to connect. Retrying in 5 seconds...");
-                    await Task.Delay(5000);
-                    continue;
-                }
-
-                using NetworkStream stream = tcpClient.GetStream();
-
-                var receiveTask = Task.Run(() => _receiver.ReceiveAudioFromServer(stream, _receiver));
-                var handleInputTask = HandleUserInput(stream, _sender, _fullAudioMaker);
-
-                try
-                {
-                    await Task.WhenAny(receiveTask, handleInputTask);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"An error occurred: {ex.Message}");
-                }
-
-                _sender.Stop();
-                _receiver.Stop();
-                tcpClient.Close();
-                Console.WriteLine(Constants.DisconnectedMessage);
-
-                Console.WriteLine("Reconnecting in 5 seconds...");
+                Console.WriteLine(Constants.FailedToConnectMessage);
                 await Task.Delay(5000);
             }
+
+            using NetworkStream stream = tcpClient.GetStream();
+
+            var receiveTask = Task.Run(() => _receiver.ReceiveAudioFromServer(stream, _receiver));
+            var handleInputTask = HandleUserInput(stream, _sender, _fullAudioMaker);
+
+            try
+            {
+                await Task.WhenAny(receiveTask, handleInputTask);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+
+            _sender.Stop();
+            _receiver.Stop();
+            tcpClient.Close();
+            Console.WriteLine(Constants.DisconnectedMessage);
+
         }
 
         

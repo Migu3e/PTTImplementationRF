@@ -1,10 +1,8 @@
-using System;
 using System.Net.Sockets;
-using System.Threading.Tasks;
-using Client.Interfaces;
 using Client.Const;
+using Client.Interfaces;
 
-namespace Client.Classes
+namespace Client.Classes.ClientManager
 {
     public class ClientInputOptions : IClientInputOptions
     {

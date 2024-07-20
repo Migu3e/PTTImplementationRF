@@ -1,11 +1,9 @@
-using System;
 using System.Net.Sockets;
-using System.Threading.Tasks;
 using Client.Classes.AudioHandler;
 using Client.Const;
 using Client.Interfaces;
 
-namespace Client.Classes
+namespace Client.Classes.ClientManager
 {
     public class ClientStarter : IClientStarter
     {

@@ -21,10 +21,7 @@ public class Sender : ISender
 
     private void WaveIn_DataAvailable(object sender, WaveInEventArgs e)
     {
-        lock (buffer)
-        {
-            buffer.AddRange(e.Buffer.Take(e.BytesRecorded));
-        }
+        buffer.AddRange(e.Buffer.Take(e.BytesRecorded));
     }
 
     public void Start()
@@ -39,19 +36,17 @@ public class Sender : ISender
 
     public int ReadAudio(byte[] outputBuffer, int offset, int count)
     {
-        lock (buffer)
-        {
-            int bytesToCopy = Math.Min(count, buffer.Count);
-            buffer.CopyTo(0, outputBuffer, offset, bytesToCopy);
-            buffer.RemoveRange(0, bytesToCopy);
-            return bytesToCopy;
-        }
+        int bytesToCopy = Math.Min(count, buffer.Count);
+        buffer.CopyTo(0, outputBuffer, offset, bytesToCopy);
+        buffer.RemoveRange(0, bytesToCopy);
+        return bytesToCopy;
     }
 
     public bool IsDataAvailable()
     {
         return buffer.Count >= CHUNK_SIZE;
     }
+
     public async Task TransmitAudioToServer(NetworkStream stream, ISender sender, byte channel)
     {
         byte[] buffer = new byte[CHUNK_SIZE];
@@ -70,6 +65,7 @@ public class Sender : ISender
             }
         }
     }
+
     public async Task SendFullAudioToServer(NetworkStream stream, IFullAudioMaker fullAudioMaker)
     {
         byte[] fullAudio = fullAudioMaker.GetFullAudioData();
@@ -89,5 +85,4 @@ public class Sender : ISender
 
         Console.WriteLine(Constants.SendAudioToServer);
     }
-
 }

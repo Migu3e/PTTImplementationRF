@@ -8,172 +8,124 @@ using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
 using System.Linq;
 
-public class TcpServer
-{
-    private TcpListener listener;
-    private ConcurrentDictionary<string, ConnectedClient> connectedClients;
-    private CancellationTokenSource cts;
-    private IMongoDatabase database;
-    private IGridFSBucket gridFS;
+using System.Net;
+using System.Net.Sockets;
+using server.Classes;
+using server.Interface;
 
-    public TcpServer(int port, string mongoConnectionString, string databaseName)
+public class TcpServer : IServer
+{
+    private readonly TcpListener listener;
+    private readonly IClientManager clientManager;
+    private readonly IGridFsManager gridFsManager;
+    private bool isRunning;
+
+    public TcpServer(int port, IClientManager clientManager, IGridFsManager gridFsManager)
     {
         listener = new TcpListener(IPAddress.Any, port);
-        connectedClients = new ConcurrentDictionary<string, ConnectedClient>();
-        cts = new CancellationTokenSource();
-
-        var client = new MongoClient(mongoConnectionString);
-        database = client.GetDatabase(databaseName);
-        gridFS = new GridFSBucket(database);
+        this.clientManager = clientManager;
+        this.gridFsManager = gridFsManager;
     }
 
-    public Task StartAsync()
+    public async Task StartAsync()
     {
         listener.Start();
         Console.WriteLine($"TCP Server started on port {((IPEndPoint)listener.LocalEndpoint).Port}");
-        Console.Out.Flush();
-        return AcceptClientsAsync();
-    }
-
-    private async Task AcceptClientsAsync()
-    {
-        while (!cts.Token.IsCancellationRequested)
+        isRunning = true;
+        while (isRunning)
         {
             try
             {
                 TcpClient tcpClient = await listener.AcceptTcpClientAsync();
                 string uniqueId = Guid.NewGuid().ToString();
-                var connectedClient = new ConnectedClient(uniqueId, tcpClient);
-            
-                if (connectedClients.TryAdd(uniqueId, connectedClient))
-                {
-                    Console.WriteLine($"Client connected. Assigned ID: {uniqueId}");
-                    Console.Out.Flush();
-                    _ = HandleClientAsync(connectedClient);
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to add client with ID: {uniqueId}");
-                    Console.Out.Flush();
-                    tcpClient.Close();
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                break;
+                var client = new Client(uniqueId, tcpClient);
+                clientManager.AddClient(client);
+                _ = HandleClientAsync(client);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error accepting client: {ex.Message}");
-                Console.Out.Flush();
+                Console.WriteLine(string.Format(Constants.ErrorAcceptingClientMessage, ex.Message));
             }
         }
     }
-    private async Task HandleClientAsync(ConnectedClient client)
+
+    private async Task HandleClientAsync(Client client)
     {
         try
         {
             using (NetworkStream stream = client.TcpClient.GetStream())
             {
                 byte[] headerBuffer = new byte[4];
-                while (!cts.Token.IsCancellationRequested)
+                while (isRunning)
                 {
-                    int headerBytesRead = await stream.ReadAsync(headerBuffer, 0, 4, cts.Token);
+                    int headerBytesRead = await stream.ReadAsync(headerBuffer, 0, 4);
                     if (headerBytesRead == 4)
                     {
                         if (headerBuffer[0] == 0xAA && headerBuffer[1] == 0xAA && headerBuffer[2] == 0xAA && headerBuffer[3] == 0xAA)
                         {
-                            // Read the length of the audio data
-                            byte[] lengthBuffer = new byte[4];
-                            await stream.ReadAsync(lengthBuffer, 0, 4, cts.Token);
-                            int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
-
-                            // Real-time audio transmission
-                            byte[] audioBuffer = new byte[audioLength];
-                            int bytesRead = await stream.ReadAsync(audioBuffer, 0, audioLength, cts.Token);
-                            if (bytesRead == audioLength)
-                            {
-                                // Broadcast to other clients, but don't save
-                                await BroadcastAudioAsync(client.Id, audioBuffer, bytesRead);
-                            }
+                            await HandleRealtimeAudioAsync(client, stream);
                         }
                         else if (headerBuffer[0] == 0xFF && headerBuffer[1] == 0xFF && headerBuffer[2] == 0xFF && headerBuffer[3] == 0xFF)
                         {
-                            // Full audio transmission
-                            await HandleFullAudioTransmission(client, stream);
+                            await HandleFullAudioTransmissionAsync(client, stream);
                         }
                     }
                 }
             }
         }
-
-        catch (OperationCanceledException)
-        {
-            // Server is shutting down
-        }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling client {client.Id}: {ex.Message}");
+            Console.WriteLine(string.Format(Constants.ErrorHandlingClientMessage, client.Id, ex.Message));
         }
         finally
         {
-            // Remove the client when the connection is closed
-            if (connectedClients.TryRemove(client.Id, out _))
-            {
-                Console.WriteLine($"Client disconnected. ID: {client.Id}");
-                client.TcpClient.Close();
-            }
+            clientManager.RemoveClient(client.Id);
         }
     }
-    private async Task HandleFullAudioTransmission(ConnectedClient client, NetworkStream stream)
+
+    private async Task HandleRealtimeAudioAsync(Client sender, NetworkStream stream)
     {
-        try
+        byte[] lengthBuffer = new byte[4];
+        await stream.ReadAsync(lengthBuffer, 0, 4);
+        int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
+
+        byte[] audioBuffer = new byte[audioLength];
+        int bytesRead = await stream.ReadAsync(audioBuffer, 0, audioLength);
+        if (bytesRead == audioLength)
         {
-            // Read the length of the audio data
-            byte[] lengthBuffer = new byte[4];
-            await stream.ReadAsync(lengthBuffer, 0, 4);
-            int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
-
-            // Read the full audio data
-            byte[] audioBuffer = new byte[audioLength];
-            int bytesRead = 0;
-            while (bytesRead < audioLength)
-            {
-                int chunkSize = await stream.ReadAsync(audioBuffer, bytesRead, audioLength - bytesRead);
-                bytesRead += chunkSize;
-            }
-
-            // Create a directory to store audio files if it doesn't exist
-            string audioDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AudioFiles");
-            Directory.CreateDirectory(audioDirectory);
-
-            // Generate a unique filename
-            string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
-            string filePath = Path.Combine(audioDirectory, filename);
-
-            // Save the audio file
-            await File.WriteAllBytesAsync(filePath, audioBuffer);
-
-            Console.WriteLine($"Received and saved full audio ({audioLength} bytes) from client {client.Id}");
-            Console.WriteLine($"File saved at: {filePath}");
-
-            // Optionally, you can broadcast this audio to other clients
-            // await BroadcastAudioAsync(client.Id, audioBuffer, audioLength);
+            await BroadcastAudioAsync(sender.Id, audioBuffer, bytesRead);
         }
-        catch (Exception ex)
+    }
+
+    private async Task HandleFullAudioTransmissionAsync(Client client, NetworkStream stream)
+    {
+        byte[] lengthBuffer = new byte[4];
+        await stream.ReadAsync(lengthBuffer, 0, 4);
+        int audioLength = BitConverter.ToInt32(lengthBuffer, 0);
+
+        byte[] audioBuffer = new byte[audioLength];
+        int bytesRead = 0;
+        while (bytesRead < audioLength)
         {
-            Console.WriteLine($"Error handling full audio transmission from client {client.Id}: {ex.Message}");
+            int chunkSize = await stream.ReadAsync(audioBuffer, bytesRead, audioLength - bytesRead);
+            bytesRead += chunkSize;
         }
+
+        string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
+        await gridFsManager.SaveAudioAsync(filename, audioBuffer);
+
+        Console.WriteLine(string.Format(Constants.ReceivedFullAudioMessage, audioLength, client.Id));
     }
 
     private async Task BroadcastAudioAsync(string senderId, byte[] audioData, int length)
     {
-        var tasks = connectedClients.Where(kvp => kvp.Key != senderId)
-                                    .Select(kvp => SendAudioToClientAsync(kvp.Value, audioData, length));
+        var tasks = clientManager.GetAllClients()
+            .Where(c => c.Id != senderId)
+            .Select(c => SendAudioToClientAsync(c, audioData, length));
         await Task.WhenAll(tasks);
     }
 
-    private async Task SendAudioToClientAsync(ConnectedClient client, byte[] audioData, int length)
+    private async Task SendAudioToClientAsync(Client client, byte[] audioData, int length)
     {
         try
         {
@@ -181,30 +133,19 @@ public class TcpServer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error sending audio to client {client.Id}: {ex.Message}");
+            Console.WriteLine(string.Format(Constants.ErrorSendingAudioMessage, client.Id, ex.Message));
         }
     }
 
-    public async Task StopAsync()
+    public Task StopAsync()
     {
-        cts.Cancel();
+        isRunning = false;
         listener.Stop();
-
-        foreach (var client in connectedClients.Values)
+        foreach (var client in clientManager.GetAllClients())
         {
             client.TcpClient.Close();
         }
-        connectedClients.Clear();
-
-        Console.WriteLine("TCP Server stopped");
-    }
-
-    public void ListConnectedClients()
-    {
-        Console.WriteLine($"Connected clients ({connectedClients.Count}):");
-        foreach (var client in connectedClients.Values)
-        {
-            Console.WriteLine($"- ID: {client.Id}, IP: {((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address}");
-        }
+        Console.WriteLine(Constants.ServerStoppedConsoleMessage);
+        return Task.CompletedTask;
     }
 }

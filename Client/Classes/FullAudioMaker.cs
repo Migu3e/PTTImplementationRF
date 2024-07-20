@@ -1,41 +1,35 @@
 using NAudio.Wave;
 using System;
 using System.IO;
+using Client.Const;
+using Client.Interfaces;
 
 namespace Client.Classes
 {
-    public class FullAudioMaker
-    { 
+    public class FullAudioMaker : IFullAudioMaker
+    {
         private WaveInEvent waveSource = null;
         private WaveFileWriter waveFile = null;
         private string outputFilePath;
 
         public void StartRecording()
         {
-            // Generate a unique filename for this recording session
             outputFilePath = $"recorded_audio_{DateTime.Now:yyyyMMddHHmmss}.wav";
-
             try
             {
                 waveSource = new WaveInEvent();
                 waveSource.WaveFormat = new WaveFormat(44100, 1);
-
                 waveSource.DataAvailable += (sender, e) =>
                 {
-                    if (waveFile != null)
-                    {
-                        waveFile.Write(e.Buffer, 0, e.BytesRecorded);
-                        waveFile.Flush();
-                    }
+                    waveFile?.Write(e.Buffer, 0, e.BytesRecorded);
+                    waveFile?.Flush();
                 };
-
                 waveFile = new WaveFileWriter(outputFilePath, waveSource.WaveFormat);
-
                 waveSource.StartRecording();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error starting recording: {ex.Message}");
+                Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
                 StopRecording();
             }
         }
@@ -56,17 +50,18 @@ namespace Client.Classes
             {
                 try
                 {
-                    return File.ReadAllBytes(outputFilePath);
+                    byte[] data = File.ReadAllBytes(outputFilePath);
                     File.Delete(outputFilePath);
+                    return data;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error reading audio file: {ex.Message}");
+                    Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
                 }
             }
             else
             {
-                Console.WriteLine("No audio file found. Please record audio first.");
+                Console.WriteLine(Constants.NoAudioDataMessage);
             }
             return new byte[0];
         }

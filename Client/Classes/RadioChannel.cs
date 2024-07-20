@@ -1,6 +1,8 @@
-using NAudio.Wave;
+using Client.Interfaces;
 
-public class RadioChannel
+namespace Client.Classes;
+
+public class RadioChannel : IRadioChannel
 {
     private byte[] currentAudioBuffer;
 

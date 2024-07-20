@@ -18,7 +18,7 @@ public class ServerOptions
                     Console.Out.Flush();
                     break;
                 default:
-                    Console.WriteLine(string.Format(Constants.UnrecognizedKeyMessage, key, Constants.QuitCommand, Constants.ListClientsCommand));
+                    Console.WriteLine(Constants.UnrecognizedKeyMessage, key, Constants.QuitCommand, Constants.ListClientsCommand);
                     Console.Out.Flush();
                     break;
             }

@@ -17,7 +17,7 @@ public class ClientManager : IClientManager
     public void AddClient(Client client)
     {
         clients.Add(client);
-        Console.WriteLine(string.Format(Constants.ClientConnectedMessage, client.Id));
+        Console.WriteLine(Constants.ClientConnectedMessage, client.Id);
     }
 
     public void RemoveClient(string id)
@@ -26,7 +26,7 @@ public class ClientManager : IClientManager
         if (client != null)
         {
             clients.Remove(client);
-            Console.WriteLine(string.Format(Constants.ClientDisconnectedMessage, id));
+            Console.WriteLine(Constants.ClientDisconnectedMessage, id);
             client.TcpClient.Close();
         }
     }
@@ -38,13 +38,13 @@ public class ClientManager : IClientManager
 
     public void ListConnectedClients()
     {
-        Console.WriteLine(string.Format(Constants.ConnectedClientsMessage, clients.Count));
+        Console.WriteLine(Constants.ConnectedClientsMessage, clients.Count);
         foreach (var client in clients)
         {
-            Console.WriteLine(string.Format(Constants.ClientInfoFormat, 
+            Console.WriteLine(Constants.ClientInfoFormat, 
                 client.Id, 
                 ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address, 
-                client.Channel));
+                client.Channel);
         }
     }
 }

@@ -3,28 +3,23 @@ using System;
 using System.IO;
 using Client.Const;
 using Client.Interfaces;
+using System.Collections.Generic;
 
 namespace Client.Classes
 {
     public class FullAudioMaker : IFullAudioMaker
     {
         private WaveInEvent waveSource = null;
-        private WaveFileWriter waveFile = null;
-        private string outputFilePath;
+        private List<byte> audioBuffer = new List<byte>();
 
         public void StartRecording()
         {
-            outputFilePath = $"recorded_audio_{DateTime.Now:yyyyMMddHHmmss}.wav";
             try
             {
                 waveSource = new WaveInEvent();
-                waveSource.WaveFormat = new WaveFormat(44100, 1);
-                waveSource.DataAvailable += (sender, e) =>
-                {
-                    waveFile?.Write(e.Buffer, 0, e.BytesRecorded);
-                    waveFile?.Flush();
-                };
-                waveFile = new WaveFileWriter(outputFilePath, waveSource.WaveFormat);
+                waveSource.WaveFormat = new WaveFormat(44100, 16, 1);
+                waveSource.DataAvailable += OnDataAvailable;
+                audioBuffer.Clear();
                 waveSource.StartRecording();
             }
             catch (Exception ex)
@@ -34,36 +29,29 @@ namespace Client.Classes
             }
         }
 
+        private void OnDataAvailable(object sender, WaveInEventArgs e)
+        {
+            audioBuffer.AddRange(new ReadOnlySpan<byte>(e.Buffer, 0, e.BytesRecorded).ToArray());
+        }
+
         public void StopRecording()
         {
             waveSource?.StopRecording();
             waveSource?.Dispose();
             waveSource = null;
-
-            waveFile?.Dispose();
-            waveFile = null;
         }
 
         public byte[] GetFullAudioData()
         {
-            if (File.Exists(outputFilePath))
+            if (audioBuffer.Count > 0)
             {
-                try
-                {
-                    byte[] data = File.ReadAllBytes(outputFilePath);
-                    File.Delete(outputFilePath);
-                    return data;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"{Constants.ErrorMessage} {ex.Message}");
-                }
+                return audioBuffer.ToArray();
             }
             else
             {
                 Console.WriteLine(Constants.NoAudioDataMessage);
+                return new byte[0];
             }
-            return new byte[0];
         }
     }
 }

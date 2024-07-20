@@ -25,7 +25,7 @@ public class ReceiveAudio : IReceiveAudio
         int bytesRead = await stream.ReadAsync(audioBuffer, 0, audioLength);
         if (bytesRead == audioLength)
         {
-            await transmitAudio.BroadcastAudioAsync(sender.Id, audioBuffer, bytesRead);
+            await transmitAudio.BroadcastAudioAsync(sender, audioBuffer, bytesRead);
         }
     }
 

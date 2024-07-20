@@ -11,7 +11,7 @@ public class Client
     public TcpClient TcpClient { get; }
     public int Channel { get; set; }
 
-    public Client(string id, TcpClient tcpClient, int channel = 0)
+    public Client(string id, TcpClient tcpClient, int channel = 1)
     {
         Id = id;
         TcpClient = tcpClient;

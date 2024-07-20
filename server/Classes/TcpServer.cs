@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
-using server.Classes;
+using server.Const;
 using server.Interface;
+
+namespace server.Classes;
 
 public class TcpServer : IServer
 {

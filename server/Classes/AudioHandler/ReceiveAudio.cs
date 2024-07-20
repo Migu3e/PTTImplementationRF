@@ -1,7 +1,8 @@
 using System.Net.Sockets;
+using server.Const;
 using server.Interface;
 
-namespace server.Classes;
+namespace server.Classes.AudioHandler;
 
 public class ReceiveAudio : IReceiveAudio
 {

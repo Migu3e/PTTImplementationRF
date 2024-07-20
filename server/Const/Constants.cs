@@ -1,7 +1,11 @@
+namespace server.Const;
+
 public static class Constants
 {
     public const string MongoConnectionString = "mongodb://localhost:27017/?directConnection=true";
     public const string DatabaseName = "PTTAudioDB";
+
+    public const string FolderToSave = "AudioFiles";
     public const int ServerPort = 8080;
     public const string ServerStartedOnPort = "TCP Server started on port";
     public const string QuitCommand = "Q";

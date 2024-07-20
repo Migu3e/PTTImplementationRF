@@ -1,6 +1,7 @@
+using server.Const;
 using server.Interface;
 
-namespace server.Classes;
+namespace server.Classes.AudioHandler;
 
 public class TransmitAudio : ITransmitAudio
 {

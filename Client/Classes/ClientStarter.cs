@@ -11,6 +11,9 @@ namespace Client.Classes
         private readonly IFullAudioMaker _fullAudioMaker;
         private readonly IReceiver _receiver;
         private readonly ISender _sender;
+        private byte currentChannel = 1; // Default to channel 1
+
+
 
         public ClientStarter(IFullAudioMaker fullAudioMaker, IReceiver receiver, ISender sender)
         {
@@ -21,21 +24,41 @@ namespace Client.Classes
 
         public async Task StartAsync()
         {
-            using TcpClient tcpClient = new TcpClient();
-            if (!await ConnectToServer(tcpClient))
-                return;
+            while (true)
+            {
+                using TcpClient tcpClient = new TcpClient();
+                if (!await ConnectToServer(tcpClient))
+                {
+                    Console.WriteLine("Failed to connect. Retrying in 5 seconds...");
+                    await Task.Delay(5000);
+                    continue;
+                }
 
-            using NetworkStream stream = tcpClient.GetStream();
+                using NetworkStream stream = tcpClient.GetStream();
 
-            _ = Task.Run(() => _receiver.ReceiveAudioFromServer(stream, _receiver));
-            await HandleUserInput(stream, _sender, _fullAudioMaker);
+                var receiveTask = Task.Run(() => _receiver.ReceiveAudioFromServer(stream, _receiver));
+                var handleInputTask = HandleUserInput(stream, _sender, _fullAudioMaker);
 
-            _sender.Stop();
-            _receiver.Stop();
-            tcpClient.Close();
-            Console.WriteLine(Constants.DisconnectedMessage);
-            Console.WriteLine(Constants.ProgramExitedMessage);
+                try
+                {
+                    await Task.WhenAny(receiveTask, handleInputTask);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred: {ex.Message}");
+                }
+
+                _sender.Stop();
+                _receiver.Stop();
+                tcpClient.Close();
+                Console.WriteLine(Constants.DisconnectedMessage);
+
+                Console.WriteLine("Reconnecting in 5 seconds...");
+                await Task.Delay(5000);
+            }
         }
+
+        
 
         private async Task<bool> ConnectToServer(TcpClient tcpClient)
         {
@@ -86,18 +109,38 @@ namespace Client.Classes
                         case ConsoleKey.Q:
                             isRunning = false;
                             break;
+                        case ConsoleKey.C:
+                            ChangeChannel();
+                            break;
+                        
                     }
                 }
 
                 if (isTransmitting)
                 {
-                    await _sender.TransmitAudioToServer(stream, sender);
+                    await _sender.TransmitAudioToServer(stream, sender,currentChannel);
                 }
 
                 await Task.Delay(10);
             }
+
+        }
+        public void ChangeChannel()
+        {
+            Console.Write("Enter channel number (1-11): ");
+            if (byte.TryParse(Console.ReadLine(), out byte newChannel) && newChannel >= 1 && newChannel <= 11)
+            {
+                currentChannel = newChannel;
+                Console.WriteLine($"Switched to channel {currentChannel}");
+            }
+            else
+            {
+                Console.WriteLine("Invalid channel number. Please enter a number between 1 and 11.");
+            }
+            
         }
 
         
     }
+    
 }

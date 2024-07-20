@@ -52,7 +52,7 @@ public class Sender : ISender
     {
         return buffer.Count >= CHUNK_SIZE;
     }
-    public async Task TransmitAudioToServer(NetworkStream stream, ISender sender)
+    public async Task TransmitAudioToServer(NetworkStream stream, ISender sender, byte channel)
     {
         byte[] buffer = new byte[CHUNK_SIZE];
         if (sender.IsDataAvailable())
@@ -60,7 +60,7 @@ public class Sender : ISender
             int bytesRead = sender.ReadAudio(buffer, 0, buffer.Length);
             if (bytesRead > 0)
             {
-                byte[] header = new byte[] { 0xAA, 0xAA, 0xAA, 0xAA };
+                byte[] header = new byte[] { 0xAA, 0xAA, 0xAA, channel };
                 await stream.WriteAsync(header, 0, header.Length);
 
                 byte[] lengthBytes = BitConverter.GetBytes(bytesRead);
@@ -87,7 +87,7 @@ public class Sender : ISender
 
         await stream.WriteAsync(fullAudio, 0, fullAudio.Length);
 
-        Console.WriteLine($"{Constants.SendAudioToServer} ({fullAudio.Length} bytes).");
+        Console.WriteLine(Constants.SendAudioToServer);
     }
 
 }

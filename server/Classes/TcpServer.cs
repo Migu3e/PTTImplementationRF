@@ -70,8 +70,9 @@ public class TcpServer : IServer
                     int headerBytesRead = await stream.ReadAsync(headerBuffer, 0, 4);
                     if (headerBytesRead == 4)
                     {
-                        if (headerBuffer[0] == 0xAA && headerBuffer[1] == 0xAA && headerBuffer[2] == 0xAA && headerBuffer[3] == 0xAA)
+                        if (headerBuffer[0] == 0xAA && headerBuffer[1] == 0xAA && headerBuffer[2] == 0xAA)
                         {
+                            client.Channel = headerBuffer[3];
                             await receiveAudio.HandleRealtimeAudioAsync(client, stream);
                         }
                         else if (headerBuffer[0] == 0xFF && headerBuffer[1] == 0xFF && headerBuffer[2] == 0xFF && headerBuffer[3] == 0xFF)

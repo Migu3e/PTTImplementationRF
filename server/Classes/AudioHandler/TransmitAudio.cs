@@ -12,12 +12,20 @@ public class TransmitAudio : ITransmitAudio
         this.clientManager = clientManager;
     }
 
-    public async Task BroadcastAudioAsync(string senderId, byte[] audioData, int length)
+    public async Task BroadcastAudioAsync(Client sender, byte[] audioData, int length)
     {
-        var tasks = clientManager.GetAllClients()
-            .Where(c => c.Id != senderId)
-            .Select(c => SendAudioToClientAsync(c, audioData, length));
-        await Task.WhenAll(tasks);
+        var clientsOnSameChannel = clientManager.GetAllClients()
+            .Where(client => IsClientEligibleForBroadcast(client, sender));
+
+        var broadcastTasks = clientsOnSameChannel
+            .Select(client => SendAudioToClientAsync(client, audioData, length));
+
+        await Task.WhenAll(broadcastTasks);
+    }
+
+    private bool IsClientEligibleForBroadcast(Client client, Client sender)
+    {
+        return client.Id != sender.Id && client.Channel == sender.Channel;
     }
 
     public async Task SendAudioToClientAsync(Client client, byte[] audioData, int length)

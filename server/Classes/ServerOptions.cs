@@ -16,11 +16,9 @@ public class ServerOptions
                     return false;
                 case Constants.ListClientsCommand:
                     clientManager.ListConnectedClients();
-                    Console.Out.Flush();
                     break;
                 default:
                     Console.WriteLine(Constants.UnrecognizedKeyMessage, key, Constants.QuitCommand, Constants.ListClientsCommand);
-                    Console.Out.Flush();
                     break;
             }
         }

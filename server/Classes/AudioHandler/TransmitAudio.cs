@@ -6,16 +6,16 @@ namespace server.Classes.AudioHandler;
 
 public class TransmitAudio : ITransmitAudio
 {
-    private readonly IClientManager clientManager;
+    private readonly IClientManager _clientManager;
 
     public TransmitAudio(IClientManager clientManager)
     {
-        this.clientManager = clientManager;
+        _clientManager = clientManager;
     }
 
     public async Task BroadcastAudioAsync(Client sender, byte[] audioData, int length)
     {
-        var clientsOnSameChannel = clientManager.GetAllClients()
+        var clientsOnSameChannel = _clientManager.GetAllClients()
             .Where(client => IsClientEligibleForBroadcast(client, sender));
 
         var broadcastTasks = clientsOnSameChannel

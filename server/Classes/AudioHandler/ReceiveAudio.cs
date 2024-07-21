@@ -7,13 +7,13 @@ namespace server.Classes.AudioHandler;
 
 public class ReceiveAudio : IReceiveAudio
 {
-    private readonly ITransmitAudio transmitAudio;
-    private readonly IGridFsManager gridFsManager;
+    private readonly ITransmitAudio _transmitAudio;
+    private readonly IGridFsManager _gridFsManager;
 
     public ReceiveAudio(ITransmitAudio transmitAudio, IGridFsManager gridFsManager)
     {
-        this.transmitAudio = transmitAudio;
-        this.gridFsManager = gridFsManager;
+        _transmitAudio = transmitAudio;
+        _gridFsManager = gridFsManager;
     }
 
     public async Task HandleRealtimeAudioAsync(Client sender, NetworkStream stream)
@@ -26,7 +26,7 @@ public class ReceiveAudio : IReceiveAudio
         int bytesRead = await stream.ReadAsync(audioBuffer, 0, audioLength);
         if (bytesRead == audioLength)
         {
-            await transmitAudio.BroadcastAudioAsync(sender, audioBuffer, bytesRead);
+            await _transmitAudio.BroadcastAudioAsync(sender, audioBuffer, bytesRead);
         }
     }
 
@@ -45,7 +45,7 @@ public class ReceiveAudio : IReceiveAudio
         }
 
         string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
-        await gridFsManager.SaveAudioAsync(filename, audioBuffer);
+        await _gridFsManager.SaveAudioAsync(filename, audioBuffer);
 
         Console.WriteLine(Constants.ReceivedFullAudioMessage, audioLength, client.Id);
     }

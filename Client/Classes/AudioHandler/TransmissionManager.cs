@@ -19,7 +19,6 @@ namespace Client.Classes.AudioHandler
             _isTransmitting = false;
         }
 
-        public bool IsTransmitting => _isTransmitting;
 
         public void StartTransmission()
         {

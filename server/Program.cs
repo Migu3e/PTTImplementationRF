@@ -25,7 +25,7 @@ class Program
         var server = new TcpServer(Constants.ServerPort, clientManager, receiveAudio, clientHandler);
         
         // da TCP server
-        _ = server.StartAsync();
+        _ = server.RunAsync();
 
         // the WebSocket server
         var webSocketServerTask = RunWebSocketServerAsync();

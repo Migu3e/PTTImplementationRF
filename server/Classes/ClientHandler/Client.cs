@@ -1,9 +1,5 @@
 using System.Net.Sockets;
 
-namespace server.Classes.ClientHandler;
-
-// Client.cs
-
 public class Client
 {
     public string Id { get; }

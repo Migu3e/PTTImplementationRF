@@ -6,6 +6,7 @@ public static class Constants
     public const string DatabaseName = "PTTAudioDB";
 
     public const string FolderToSave = "AudioFiles";
+    public const int WebSocketPort = 8081;
     public const int ServerPort = 8080;
     public const string ServerStartedOnPort = "TCP Server started on port";
     public const string QuitCommand = "Q";

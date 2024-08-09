@@ -7,7 +7,7 @@ namespace server.Classes.ClientHandler
     {
         public string Id { get; }
         public TcpClient? TcpClient { get; }
-        public WebSocket? WebSocket { get; }
+        public System.Net.WebSockets.WebSocket? WebSocket { get; }
         public int Channel { get; set; }
 
         //  TCP clients
@@ -20,7 +20,7 @@ namespace server.Classes.ClientHandler
         }
 
         //  WebSocket clients
-        public Client(string id, WebSocket webSocket, int channel = 1)
+        public Client(string id, System.Net.WebSockets.WebSocket webSocket, int channel = 1)
         {
             Id = id;
             TcpClient = null;

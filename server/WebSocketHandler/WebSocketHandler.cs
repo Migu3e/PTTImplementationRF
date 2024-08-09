@@ -37,11 +37,10 @@ namespace server.Classes.WebSocket
 
         private async Task SendClientId(System.Net.WebSockets.WebSocket webSocket, string clientId)
         {
-            var message = new { type = "clientId", data = clientId };
-            var json = System.Text.Json.JsonSerializer.Serialize(message);
-            var bytes = Encoding.UTF8.GetBytes(json);
+            var bytes = Encoding.UTF8.GetBytes(clientId);
             await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
+
 
         private async Task KeepConnectionAlive(System.Net.WebSockets.WebSocket webSocket)
         {

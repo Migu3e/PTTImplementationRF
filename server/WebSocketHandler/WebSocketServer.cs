@@ -50,7 +50,7 @@ namespace server.Classes.WebSocket
             return Task.CompletedTask;
         }
 
-        private async void ProcessWebSocketRequest(HttpListenerContext context)
+        private async Task ProcessWebSocketRequest(HttpListenerContext context)
         {
             WebSocketContext webSocketContext = null;
             try
@@ -73,5 +73,6 @@ namespace server.Classes.WebSocket
                 }
             }
         }
+
     }
 }

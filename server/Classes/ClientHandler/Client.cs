@@ -1,15 +1,34 @@
 using System.Net.Sockets;
+using System.Net.WebSockets;
 
-public class Client
+namespace server.Classes.ClientHandler
 {
-    public string Id { get; }
-    public TcpClient TcpClient { get; }
-    public int Channel { get; set; }
-
-    public Client(string id, TcpClient tcpClient, int channel = 1)
+    public class Client
     {
-        Id = id;
-        TcpClient = tcpClient;
-        Channel = channel;
+        public string Id { get; }
+        public TcpClient? TcpClient { get; }
+        public WebSocket? WebSocket { get; }
+        public int Channel { get; set; }
+
+        //  TCP clients
+        public Client(string id, TcpClient tcpClient, int channel = 1)
+        {
+            Id = id;
+            TcpClient = tcpClient;
+            WebSocket = null;
+            Channel = channel;
+        }
+
+        //  WebSocket clients
+        public Client(string id, WebSocket webSocket, int channel = 1)
+        {
+            Id = id;
+            TcpClient = null;
+            WebSocket = webSocket;
+            Channel = channel;
+        }
+
+        public bool IsTcpClient => TcpClient != null;
+        public bool IsWebSocketClient => WebSocket != null;
     }
 }

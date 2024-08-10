@@ -29,6 +29,19 @@ public class ReceiveAudio : IReceiveAudio
             await _transmitAudio.BroadcastAudioAsync(sender, audioBuffer, bytesRead);
         }
     }
+    public async Task HandleRealtimeAudioAsyncWebSockets(Client sender, byte[] audioData)
+    {
+        Console.WriteLine($"websocket {audioData}");
+        await _transmitAudio.BroadcastAudioAsync(sender, audioData, audioData.Length);
+    }
+    
+    public async Task HandleFullAudioTransmissionAsyncWebSockets(Client client, byte[] audioData)
+    {
+        string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.webm";
+        await _gridFsManager.SaveAudioAsync(filename, audioData,true);
+
+        Console.WriteLine(Constants.ReceivedFullAudioMessage, audioData.Length, client.Id);
+    }
 
     public async Task HandleFullAudioTransmissionAsync(Client client, NetworkStream stream)
     {
@@ -45,7 +58,7 @@ public class ReceiveAudio : IReceiveAudio
         }
 
         string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
-        await _gridFsManager.SaveAudioAsync(filename, audioBuffer);
+        await _gridFsManager.SaveAudioAsync(filename, audioBuffer,false);
 
         Console.WriteLine(Constants.ReceivedFullAudioMessage, audioLength, client.Id);
     }

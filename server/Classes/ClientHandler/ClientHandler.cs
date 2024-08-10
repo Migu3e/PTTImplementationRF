@@ -22,6 +22,7 @@ namespace server.Classes.ClientHandler
                 using (NetworkStream stream = client.TcpClient.GetStream())
                 {
                     byte[] headerBuffer = new byte[4];
+                    Console.WriteLine(headerBuffer);
                     while (isRunning)
                     {
                         int headerBytesRead = await stream.ReadAsync(headerBuffer, 0, 4);

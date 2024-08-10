@@ -2,5 +2,5 @@ namespace server.Interface;
 
 public interface IGridFsManager
 {
-    Task SaveAudioAsync(string filename, byte[] audioData);
+    Task SaveAudioAsync(string filename, byte[] audioData, bool clienttype);
 }

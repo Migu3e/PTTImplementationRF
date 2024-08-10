@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
+using GridFs;
 using server.Classes;
 using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
 using server.Classes.WebSocket;
 using server.Const;
-using server.GridFS;
 using server.Interface;
 
 class Program
@@ -24,7 +24,7 @@ class Program
         var tcpServer = new TcpServer(Constants.TcpServerPort, clientManager, receiveAudio, clientHandler);
         
         // WebSocket server
-        var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager);
+        var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager,transmitAudio,receiveAudio);
 
         var tcpServerTask = tcpServer.RunAsync();
         var webSocketServerTask = webSocketServer.StartAsync();

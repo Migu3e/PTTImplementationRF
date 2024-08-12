@@ -97,7 +97,7 @@ namespace server.Classes.WebSocket
                 client.Channel = channel;
                 await _transmitAudio.BroadcastAudioAsync(client, audioData, audioLength);
             }
-            else if (buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
+            else 
             {
                 int audioLength = BitConverter.ToInt32(buffer, 4);
                 if (count < 8 + audioLength)
@@ -113,10 +113,7 @@ namespace server.Classes.WebSocket
 
                 await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
             }
-            else
-            {
-                Console.WriteLine($"Received message with unknown header: {BitConverter.ToString(buffer.Take(4).ToArray())}");
-            }
+           
         }
     }
 }

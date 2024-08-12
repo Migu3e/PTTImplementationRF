@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using server.Classes.ClientHandler;
 using server.Interface;
 
@@ -36,19 +37,14 @@ public class TransmitAudio : ITransmitAudio
 
             Console.WriteLine($"Sending to client {client.Id}: Length {length}, Channel {channel}, Sample Rate {sampleRate}, Total message size {messageToSend.Length}");
 
-            if (client.WebSocket != null && client.WebSocket.State == System.Net.WebSockets.WebSocketState.Open)
+            if (client.WebSocket.State == WebSocketState.Open)
             {
-                await client.WebSocket.SendAsync(new ArraySegment<byte>(messageToSend), System.Net.WebSockets.WebSocketMessageType.Binary, true, CancellationToken.None);
-            }
-            else if (client.TcpClient != null && client.TcpClient.Connected)
-            {
-                await client.TcpClient.GetStream().WriteAsync(messageToSend, 0, messageToSend.Length);
+                await client.WebSocket.SendAsync(new ArraySegment<byte>(messageToSend), WebSocketMessageType.Binary, true, CancellationToken.None);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine(client.Id, ex.Message);
+            Console.WriteLine($"Error sending audio to client {client.Id}: {ex.Message}");
         }
     }
-
 }

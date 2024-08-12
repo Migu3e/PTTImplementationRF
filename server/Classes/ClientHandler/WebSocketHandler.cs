@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using server.Classes.ClientHandler;
 using server.Interface;
+using server.Const;
 
 namespace server.Classes.WebSocket
 {
@@ -52,7 +53,7 @@ namespace server.Classes.WebSocket
             while (webSocket.State == WebSocketState.Open)
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                Console.WriteLine($"Received message: Type={result.MessageType}, Count={result.Count}, EndOfMessage={result.EndOfMessage}");
+                Console.WriteLine(Constants.ReceivedMessageInfo, result.MessageType, result.Count, result.EndOfMessage);
     
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
@@ -64,11 +65,10 @@ namespace server.Classes.WebSocket
                         messageBuffer.Clear();
                     }
                 }
-
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
-                    Console.WriteLine("WebSocket connection closed.");
+                    Console.WriteLine(Constants.WebSocketConnectionClosed);
                     break;
                 }
             }
@@ -78,7 +78,7 @@ namespace server.Classes.WebSocket
         {
             if (count < 8) 
             {
-                Console.WriteLine($"Received message is too short: {count} bytes");
+                Console.WriteLine(Constants.ShortMessageError, count);
                 return;
             }
 
@@ -91,8 +91,8 @@ namespace server.Classes.WebSocket
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
-                Console.WriteLine($"Received audio chunk: Channel {channel}, Length {audioLength}, Sample Rate {receivedSampleRate}");
-                Console.WriteLine($"Audio data snippet: {BitConverter.ToString(audioData.Take(20).ToArray())}");
+                Console.WriteLine(Constants.ReceivedAudioChunkInfo, channel, audioLength, receivedSampleRate);
+                Console.WriteLine(Constants.AudioDataSnippet, BitConverter.ToString(audioData.Take(20).ToArray()));
 
                 client.Channel = channel;
                 await _transmitAudio.BroadcastAudioAsync(client, audioData, audioLength);
@@ -102,18 +102,17 @@ namespace server.Classes.WebSocket
                 int audioLength = BitConverter.ToInt32(buffer, 4);
                 if (count < 8 + audioLength)
                 {
-                    Console.WriteLine($"Full audio message is incomplete: expected {8 + audioLength} bytes, got {count} bytes");
+                    Console.WriteLine(Constants.IncompleteFullAudioMessage, 8 + audioLength, count);
                     return;
                 }
 
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
-                Console.WriteLine($"Received full audio: {audioLength} bytes");
+                Console.WriteLine(Constants.ReceivedFullAudioInfo, audioLength);
 
                 await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
             }
-           
         }
     }
 }

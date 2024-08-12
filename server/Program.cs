@@ -18,23 +18,25 @@ class Program
         var transmitAudio = new TransmitAudio(clientManager);
         var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-        IClientHandler clientHandler = new ClientHandler(clientManager, receiveAudio);
-
-        // TCP server
-        var tcpServer = new TcpServer(Constants.TcpServerPort, clientManager, receiveAudio, clientHandler);
-        
         // WebSocket server
-        var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager,transmitAudio,receiveAudio);
+        var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager, transmitAudio, receiveAudio);
 
-        var tcpServerTask = tcpServer.RunAsync();
+        var serverOptions = new ServerOptions(clientManager, webSocketServer);
+
         var webSocketServerTask = webSocketServer.StartAsync();
 
-        Console.ReadKey();
+        Console.WriteLine("WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.");
 
-        await tcpServer.StopAsync();
-        await webSocketServer.StopAsync();
+        bool isRunning = true;
+        while (isRunning)
+        {
+            isRunning = await serverOptions.HandleInput();
+            await Task.Delay(100);
+        }
 
-        // server tasks need to complete
-        await Task.WhenAll(tcpServerTask, webSocketServerTask);
+        Console.WriteLine("Server stopped.");
+
+        // Wait for the server task to complete
+        await webSocketServerTask;
     }
 }

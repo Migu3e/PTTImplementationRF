@@ -6,21 +6,26 @@ public static class Constants
     public const string DatabaseName = "PTTAudioDB";
 
     public const string FolderToSave = "AudioFiles";
-    public const int TcpServerPort = 8080;
     public const int WebSocketServerPort = 8081;
-    public const string ServerStartedOnPort = "TCP Server started on port";
     public const string QuitCommand = "Q";
     public const string ListClientsCommand = "L";
-    public const string ServerStartingMessage = "Starting TCP Server...";
-    public const string ServerStoppedMessage = "Server stopped. Press any key to exit.";
     public const string UnrecognizedKeyMessage = "Unrecognized key: {0}. Press '{1}' to quit or '{2}' to list clients.";
-    public const string ClientConnectedMessage = "Client connected. Assigned ID: {0}";
-    public const string ClientDisconnectedMessage = "Client disconnected. ID: {0}";
-    public const string ConnectedClientsMessage = "Connected clients ({0}):";
-    public const string ClientInfoFormat = "- ID: {0}, IP: {1}, Channel: {2}";
-    public const string ErrorAcceptingClientMessage = "Error accepting client: {0}";
-    public const string ErrorHandlingClientMessage = "Error handling client {0}: {1}";
     public const string ReceivedFullAudioMessage = "Received full audio ({0} bytes) from client {1}";
-    public const string ErrorSendingAudioMessage = "Error sending audio to client {0}: {1}";
-    public const string ServerStoppedConsoleMessage = "TCP Server stopped";
+    
+    //serveroptions
+    public const string ClientConnectedMessage = "WebSocket client connected. ID: {0}";
+    public const string ClientDisconnectedMessage = "WebSocket client disconnected. ID: {0}";
+    public const string ConnectedClientsListMessage = "Connected WebSocket clients ({0}):";
+    public const string ClientInfoMessage = "- ID: {0}, Channel: {1}";
+    public const string ClientDisconnectReason = "Client disconnected";
+    
+    //websockethandeler
+    //some will be deleted when debug is not needed
+    public const string WebSocketConnectionClosed = "WebSocket connection closed.";
+    public const string ReceivedMessageInfo = "Received message: Type={0}, Count={1}, EndOfMessage={2}";
+    public const string ShortMessageError = "Received message is too short: {0} bytes";
+    public const string ReceivedAudioChunkInfo = "Received audio chunk: Channel {0}, Length {1}, Sample Rate {2}";
+    public const string AudioDataSnippet = "Audio data snippet: {0}";
+    public const string IncompleteFullAudioMessage = "Full audio message is incomplete: expected {0} bytes, got {1} bytes";
+    public const string ReceivedFullAudioInfo = "Received full audio: {0} bytes";
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using server.Interface;
+using server.Const;
 
 namespace server.Classes.ClientHandler
 {
@@ -13,7 +14,7 @@ namespace server.Classes.ClientHandler
         public void AddClient(Client client)
         {
             clients.Add(client);
-            Console.WriteLine($"client connected. Type: {(client.IsTcpClient ? "TCP" : "WebSocket")}, ID: {client.Id}");
+            Console.WriteLine(Constants.ClientConnectedMessage, client.Id);
         }
 
         public void RemoveClient(string id)
@@ -22,16 +23,9 @@ namespace server.Classes.ClientHandler
             if (client != null)
             {
                 clients.Remove(client);
-                Console.WriteLine($"client disconnected. Type: {(client.IsTcpClient ? "TCP" : "WebSocket")}, ID: {client.Id}");
+                Console.WriteLine(Constants.ClientDisconnectedMessage, client.Id);
                 
-                if (client.IsTcpClient)
-                {
-                    client.TcpClient?.Close();
-                }
-                else if (client.IsWebSocketClient)
-                {
-                    client.WebSocket?.CloseAsync(WebSocketCloseStatus.NormalClosure, "client disconnected", CancellationToken.None).Wait();
-                }
+                client.WebSocket?.CloseAsync(WebSocketCloseStatus.NormalClosure, Constants.ClientDisconnectReason, CancellationToken.None).Wait();
             }
         }
 
@@ -42,10 +36,10 @@ namespace server.Classes.ClientHandler
 
         public void ListConnectedClients()
         {
-            Console.WriteLine($"connected clients ({clients.Count}):");
+            Console.WriteLine(Constants.ConnectedClientsListMessage, clients.Count);
             foreach (var client in clients)
             {
-                Console.WriteLine($"- Type: {(client.IsTcpClient ? "TCP" : "WebSocket")}, ID: {client.Id}, Channel: {client.Channel}");
+                Console.WriteLine(Constants.ClientInfoMessage, client.Id, client.Channel);
             }
         }
     }

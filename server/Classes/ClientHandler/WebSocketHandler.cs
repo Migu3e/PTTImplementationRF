@@ -13,13 +13,11 @@ namespace server.Classes.WebSocket
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
-        private readonly ITransmitAudio _transmitAudio;
 
-        public WebSocketHandler(IClientManager clientManager, IReceiveAudio receiveAudio, ITransmitAudio transmitAudio)
+        public WebSocketHandler(IClientManager clientManager, IReceiveAudio receiveAudio)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
-            _transmitAudio = transmitAudio;
         }
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
@@ -53,7 +51,6 @@ namespace server.Classes.WebSocket
             while (webSocket.State == WebSocketState.Open)
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                Console.WriteLine(Constants.ReceivedMessageInfo, result.MessageType, result.Count, result.EndOfMessage);
     
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
@@ -85,17 +82,14 @@ namespace server.Classes.WebSocket
             if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA)
             {
                 byte channel = buffer[3];
-                int receivedSampleRate = BitConverter.ToInt32(buffer, 4);
         
                 int audioLength = count - 8;
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
-                Console.WriteLine(Constants.ReceivedAudioChunkInfo, channel, audioLength, receivedSampleRate);
-                Console.WriteLine(Constants.AudioDataSnippet, BitConverter.ToString(audioData.Take(20).ToArray()));
 
                 client.Channel = channel;
-                await _transmitAudio.BroadcastAudioAsync(client, audioData, audioLength);
+                await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
             }
             else 
             {

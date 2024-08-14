@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using GridFs;
+using MongoDB.Driver;
 using server.Classes;
 using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
@@ -8,35 +9,29 @@ using server.Classes.WebSocket;
 using server.Const;
 using server.Interface;
 
-class Program
+
+
+var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+var clientManager = new ClientManager();
+
+var mongoClient = new MongoClient(Constants.MongoConnectionString);
+var database = mongoClient.GetDatabase(Constants.DatabaseName);
+
+var gridFsManager = new GridFsManager(database);
+var transmitAudio = new TransmitAudio(clientManager);
+var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
+var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager, transmitAudio, receiveAudio);
+var serverOptions = new ServerOptions(clientManager, webSocketServer);
+var webSocketServerTask = webSocketServer.StartAsync();
+
+Console.WriteLine(Constants.StartedConnection);
+
+bool isRunning = true;
+while (isRunning)
 {
-    static async Task Main(string[] args)
-    {
-        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var clientManager = new ClientManager();
-        var gridFsManager = new GridFsManager(baseDirectory);
-        var transmitAudio = new TransmitAudio(clientManager);
-        var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
-
-        // WebSocket server
-        var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager, transmitAudio, receiveAudio);
-
-        var serverOptions = new ServerOptions(clientManager, webSocketServer);
-
-        var webSocketServerTask = webSocketServer.StartAsync();
-
-        Console.WriteLine("WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.");
-
-        bool isRunning = true;
-        while (isRunning)
-        {
-            isRunning = await serverOptions.HandleInput();
-            await Task.Delay(100);
-        }
-
-        Console.WriteLine("Server stopped.");
-
-        // Wait for the server task to complete
-        await webSocketServerTask;
-    }
+    isRunning = await serverOptions.HandleInput();
+    await Task.Delay(100);
 }
+
+Console.WriteLine(Constants.StoppedConnection);
+await webSocketServerTask;

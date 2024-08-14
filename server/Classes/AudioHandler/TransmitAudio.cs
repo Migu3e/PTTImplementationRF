@@ -35,7 +35,6 @@ public class TransmitAudio : ITransmitAudio
             Buffer.BlockCopy(sampleRateBytes, 0, messageToSend, header.Length, sampleRateBytes.Length);
             Buffer.BlockCopy(audioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
 
-            Console.WriteLine($"Sending to client {client.Id}: Length {length}, Channel {channel}, Sample Rate {sampleRate}, Total message size {messageToSend.Length}");
 
             if (client.WebSocket.State == WebSocketState.Open)
             {

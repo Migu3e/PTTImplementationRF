@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using server.Classes.AudioHandler;
+using server.Const;
 using server.Interface;
 
 namespace server.Classes.WebSocket
@@ -14,7 +15,6 @@ namespace server.Classes.WebSocket
         private readonly IClientManager _clientManager;
         private bool _isRunning;
         private readonly IReceiveAudio _receiveAudio;
-        private readonly ITransmitAudio _transmitAudio;
         
 
         public WebSocketServer(string url, IClientManager clientManager, ITransmitAudio transmitAudio,IReceiveAudio receiveAudio)
@@ -24,14 +24,13 @@ namespace server.Classes.WebSocket
             _listener.Prefixes.Add(url);
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
-            _transmitAudio = transmitAudio;
         }
 
         public async Task StartAsync()
         {
             _listener.Start();
             _isRunning = true;
-            Console.WriteLine($"WebSocket Server started on {_url}");
+            Console.WriteLine($"{Constants.WebServerStartedOn}{_url}");
 
             while (_isRunning)
             {
@@ -52,7 +51,6 @@ namespace server.Classes.WebSocket
         {
             _isRunning = false;
             _listener.Stop();
-            Console.WriteLine("WebSocket Server stopped");
             return Task.CompletedTask;
         }
 
@@ -64,12 +62,12 @@ namespace server.Classes.WebSocket
                 webSocketContext = await context.AcceptWebSocketAsync(null);
                 var webSocket = webSocketContext.WebSocket;
 
-                var handler = new WebSocketHandler(_clientManager,_receiveAudio,_transmitAudio);
+                var handler = new WebSocketHandler(_clientManager,_receiveAudio);
                 await handler.HandleConnection(webSocket);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WebSocket error: {ex.Message}");
+                Console.WriteLine($"{ex.Message}");
             }
             finally
             {

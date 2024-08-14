@@ -24,8 +24,11 @@ public static class Constants
     public const string WebSocketConnectionClosed = "WebSocket connection closed.";
     public const string ReceivedMessageInfo = "Received message: Type={0}, Count={1}, EndOfMessage={2}";
     public const string ShortMessageError = "Received message is too short: {0} bytes";
-    public const string ReceivedAudioChunkInfo = "Received audio chunk: Channel {0}, Length {1}, Sample Rate {2}";
-    public const string AudioDataSnippet = "Audio data snippet: {0}";
     public const string IncompleteFullAudioMessage = "Full audio message is incomplete: expected {0} bytes, got {1} bytes";
     public const string ReceivedFullAudioInfo = "Received full audio: {0} bytes";
+    
+    //program
+    public const string StartedConnection = "WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.";
+    public const string StoppedConnection = "WebSocket Server stopped";
+    public const string WebServerStartedOn = "WebSocket Server started on ";
 }

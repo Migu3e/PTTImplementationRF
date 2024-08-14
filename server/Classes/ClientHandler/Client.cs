@@ -15,6 +15,5 @@ namespace server.Classes.ClientHandler
             Channel = channel;
         }
 
-        public bool IsWebSocketClient => WebSocket != null;
-    }
+     }
 }

@@ -17,14 +17,13 @@ public class ReceiveAudio : IReceiveAudio
 
     public async Task HandleRealtimeAudioAsyncWebSockets(Client sender, byte[] audioData)
     {
-        Console.WriteLine($"WebSocket audio data received: {audioData.Length} bytes");
         await _transmitAudio.BroadcastAudioAsync(sender, audioData, audioData.Length);
     }
     
     public async Task HandleFullAudioTransmissionAsyncWebSockets(Client client, byte[] audioData)
     {
         string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
-        await _gridFsManager.SaveAudioAsync(filename, audioData, true);
+        await _gridFsManager.SaveAudioAsync(filename, audioData);
 
         Console.WriteLine(Constants.ReceivedFullAudioMessage, audioData.Length, client.Id);
     }

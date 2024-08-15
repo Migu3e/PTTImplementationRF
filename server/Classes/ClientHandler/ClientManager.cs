@@ -1,46 +1,46 @@
-// ClientManager.cs
-
-using System.Net;
-using server.Const;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.WebSockets;
 using server.Interface;
+using server.Const;
 
-namespace server.Classes.ClientHandler;
-
-public class ClientManager : IClientManager
+namespace server.Classes.ClientHandler
 {
-    private readonly List<Client> clients = new List<Client>();
-
-    public void AddClient(Client client)
+    public class ClientManager : IClientManager
     {
-        clients.Add(client);
-        Console.WriteLine(Constants.ClientConnectedMessage, client.Id);
-    }
+        private readonly List<Client> clients = new List<Client>();
 
-    public void RemoveClient(string id)
-    {
-        var client = clients.FirstOrDefault(c => c.Id == id);
-        if (client != null)
+        public void AddClient(Client client)
         {
-            clients.Remove(client);
-            Console.WriteLine(Constants.ClientDisconnectedMessage, id);
-            client.TcpClient.Close();
+            clients.Add(client);
+            Console.WriteLine(Constants.ClientConnectedMessage, client.Id);
         }
-    }
 
-    public IEnumerable<Client> GetAllClients()
-    {
-        return clients;
-    }
-
-    public void ListConnectedClients()
-    {
-        Console.WriteLine(Constants.ConnectedClientsMessage, clients.Count);
-        foreach (var client in clients)
+        public void RemoveClient(string id)
         {
-            Console.WriteLine(Constants.ClientInfoFormat, 
-                client.Id, 
-                ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address, 
-                client.Channel);
+            var client = clients.FirstOrDefault(c => c.Id == id);
+            if (client != null)
+            {
+                clients.Remove(client);
+                Console.WriteLine(Constants.ClientDisconnectedMessage, client.Id);
+                
+                client.WebSocket?.CloseAsync(WebSocketCloseStatus.NormalClosure, Constants.ClientDisconnectReason, CancellationToken.None).Wait();
+            }
+        }
+
+        public IEnumerable<Client> GetAllClients()
+        {
+            return clients;
+        }
+
+        public void ListConnectedClients()
+        {
+            Console.WriteLine(Constants.ConnectedClientsListMessage, clients.Count);
+            foreach (var client in clients)
+            {
+                Console.WriteLine(Constants.ClientInfoMessage, client.Id, client.Channel);
+            }
         }
     }
 }

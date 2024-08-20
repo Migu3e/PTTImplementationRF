@@ -22,19 +22,16 @@ namespace server.Classes.WebSocket
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
         {
-            var client = new Client(Guid.NewGuid().ToString(), webSocket);
+            var shortId = Guid.NewGuid().ToString("").Substring(0,8);
+            var client = new Client(shortId, webSocket);
             _clientManager.AddClient(client);
 
             await SendClientId(webSocket, client.Id);
 
-            try
-            {
-                await ProcessMessages(webSocket, client);
-            }
-            finally
-            {
-                _clientManager.RemoveClient(client.Id);
-            }
+            await ProcessMessages(webSocket, client);
+
+            _clientManager.RemoveClient(client.Id);
+
         }
 
         private async Task SendClientId(System.Net.WebSockets.WebSocket webSocket, string clientId)
@@ -58,7 +55,6 @@ namespace server.Classes.WebSocket
                     var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
                     if (message.StartsWith("FRE|"))
                     {
-                        Console.WriteLine("freqqqqq");
                         string clientNewfRequency = message.Substring(4);
                         double frequency;
                         if (double.TryParse(clientNewfRequency, out frequency))
@@ -69,6 +65,21 @@ namespace server.Classes.WebSocket
                         else
                         {
                             Console.WriteLine("Error parsing frequency: {0}", clientNewfRequency);
+                        }
+                    }
+                    if (message.StartsWith("VUL|"))
+                    {
+                        string clientNewVul = message.Substring(4);
+                        double vulome;
+                        
+                        if (double.TryParse(clientNewVul, out vulome))
+                        {
+                            client.Volume = (int)vulome;
+                            Console.WriteLine($"{client.Id} sent volume: {vulome}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error parsing volume: {0}", clientNewVul);
                         }
                     }
             

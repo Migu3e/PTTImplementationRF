@@ -8,11 +8,14 @@ namespace server.Classes.ClientHandler
         public System.Net.WebSockets.WebSocket WebSocket { get; }
         public double Frequency { get; set; }
 
-        public Client(string id, System.Net.WebSockets.WebSocket webSocket, double frequency = 29.988)
+        public int Volume { get; set; }
+
+        public Client(string id, System.Net.WebSockets.WebSocket webSocket)
         {
             Id = id;
             WebSocket = webSocket;
-            Frequency = frequency;
+            Frequency = 30.0001;
+            Volume = 50;
         }
 
      }

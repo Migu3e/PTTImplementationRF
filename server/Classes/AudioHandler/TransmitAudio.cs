@@ -40,6 +40,12 @@ public class TransmitAudio : ITransmitAudio
             Buffer.BlockCopy(header, 0, messageToSend, 0, header.Length);
             Buffer.BlockCopy(sampleRateBytes, 0, messageToSend, header.Length, sampleRateBytes.Length);
             Buffer.BlockCopy(audioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
+            
+            Console.WriteLine($"{client.Id} sent frequency: {client.Frequency} audio: {client.Volume}");
+
+            byte[] adjustedAudioData = AdjustVolume(audioData, client.Volume);
+            Buffer.BlockCopy(adjustedAudioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
+
 
             if (client.WebSocket.State == WebSocketState.Open)
             {
@@ -50,5 +56,21 @@ public class TransmitAudio : ITransmitAudio
         {
             Console.WriteLine($"Error sending audio to client {client.Id}: {ex.Message}");
         }
+    }
+    private byte[] AdjustVolume(byte[] audioData, int volume)
+    {
+        byte[] adjustedData = new byte[audioData.Length];
+        float volumeFactor = volume / 100f;
+
+        for (int i = 0; i < audioData.Length; i += 2)
+        {
+            short sample = BitConverter.ToInt16(audioData, i);
+            float adjustedSample = sample * volumeFactor;
+            short clippedSample = (short)Math.Clamp(adjustedSample, short.MinValue, short.MaxValue);
+            byte[] adjustedBytes = BitConverter.GetBytes(clippedSample);
+            adjustedData[i] = adjustedBytes[0];
+            adjustedData[i + 1] = adjustedBytes[1];
+        }
+        return adjustedData;
     }
 }

@@ -31,4 +31,9 @@ public static class Constants
     public const string StartedConnection = "WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.";
     public const string StoppedConnection = "WebSocket Server stopped";
     public const string WebServerStartedOn = "WebSocket Server started on ";
+    
+    //others
+    public const int SampleRate = 44100;
+    public const double Bandwith = 0.025;
+
 }

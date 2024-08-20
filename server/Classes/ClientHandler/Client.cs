@@ -6,13 +6,13 @@ namespace server.Classes.ClientHandler
     {
         public string Id { get; }
         public System.Net.WebSockets.WebSocket WebSocket { get; }
-        public int Channel { get; set; }
+        public double Frequency { get; set; }
 
-        public Client(string id, System.Net.WebSockets.WebSocket webSocket, int channel = 1)
+        public Client(string id, System.Net.WebSockets.WebSocket webSocket, double frequency = 29.988)
         {
             Id = id;
             WebSocket = webSocket;
-            Channel = channel;
+            Frequency = frequency;
         }
 
      }

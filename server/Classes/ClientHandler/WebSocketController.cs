@@ -9,12 +9,12 @@ using server.Const;
 
 namespace server.Classes.WebSocket
 {
-    public class WebSocketHandler
+    public class WebSocketController
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
 
-        public WebSocketHandler(IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;

@@ -62,7 +62,7 @@ namespace server.Classes.WebSocket
                 webSocketContext = await context.AcceptWebSocketAsync(null);
                 var webSocket = webSocketContext.WebSocket;
 
-                var handler = new WebSocketHandler(_clientManager,_receiveAudio);
+                var handler = new WebSocketController(_clientManager,_receiveAudio);
                 await handler.HandleConnection(webSocket);
             }
             catch (Exception ex)

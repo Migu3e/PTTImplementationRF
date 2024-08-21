@@ -6,5 +6,5 @@ namespace server.Interface;
 public interface ITransmitAudio
 {
     Task BroadcastAudioAsync(Client sender, byte[] audioData, int length);
-    Task SendAudioToClientAsync(Client client, byte[] audioData, int length, byte Frequency);
+    Task SendAudioToClientAsync(Client client, byte[] audioData, int length);
 }

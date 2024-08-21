@@ -16,7 +16,7 @@ public static class Constants
     public const string ClientConnectedMessage = "WebSocket client connected. ID: {0}";
     public const string ClientDisconnectedMessage = "WebSocket client disconnected. ID: {0}";
     public const string ConnectedClientsListMessage = "Connected WebSocket clients ({0}):";
-    public const string ClientInfoMessage = "- ID: {0}, Channel: {1}";
+    public const string ClientInfoMessage = "- ID: {0}, Status: {1}, Frequency: {2}";
     public const string ClientDisconnectReason = "Client disconnected";
     public const string ServerAccessible = "Server is accessible at:";
     

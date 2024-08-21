@@ -21,19 +21,19 @@ public class TransmitAudio : ITransmitAudio
         var clientsOnSameChannel = _clientManager.GetAllClients()
             .Where(client => client.Id != sender.Id &&
                              client.Frequency >= lowerFrequencyBound &&
-                             client.Frequency <= upperFrequencyBound);
+                             client.Frequency <= upperFrequencyBound && client.OnOff);
 
         var broadcastTasks = clientsOnSameChannel
-            .Select(client => SendAudioToClientAsync(client, audioData, length, (byte)sender.Frequency));
+            .Select(client => SendAudioToClientAsync(client, audioData, length));
 
         await Task.WhenAll(broadcastTasks);
     }
 
-    public async Task SendAudioToClientAsync(Client client, byte[] audioData, int length, byte Frequency)
+    public async Task SendAudioToClientAsync(Client client, byte[] audioData, int length)
     {
         try
         {
-            byte[] header = new byte[] { 0xAA, 0xAA, 0xAA, Frequency };
+            byte[] header = new byte[] { 0xAA, 0xAA, 0xAA, 0xAA };
             byte[] sampleRateBytes = BitConverter.GetBytes(Constants.SampleRate);
             byte[] messageToSend = new byte[header.Length + sampleRateBytes.Length + length];
 

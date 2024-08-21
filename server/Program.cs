@@ -19,11 +19,16 @@ var database = mongoClient.GetDatabase(Constants.DatabaseName);
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
-var webSocketServer = new WebSocketServer($"http://localhost:{Constants.WebSocketServerPort}/", clientManager, transmitAudio, receiveAudio);
+
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
+
+
 var serverOptions = new ServerOptions(clientManager, webSocketServer);
 var webSocketServerTask = webSocketServer.StartAsync();
 
 Console.WriteLine(Constants.StartedConnection);
+Console.WriteLine($"{Constants.ServerConnectionPoint} {webSocketServer.GetServerAddress()}");
+
 
 bool isRunning = true;
 while (isRunning)

@@ -16,7 +16,7 @@ namespace server.Classes.ClientHandler
             WebSocket = webSocket;
             Frequency = 30.0000;
             Volume = 50;
-            OnOff = true;
+            OnOff = false;
         }
 
      }

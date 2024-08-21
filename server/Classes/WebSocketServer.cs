@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.WebSockets;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using server.Classes.AudioHandler;
 using server.Const;
@@ -15,13 +16,12 @@ namespace server.Classes.WebSocket
         private readonly IClientManager _clientManager;
         private bool _isRunning;
         private readonly IReceiveAudio _receiveAudio;
-        
 
-        public WebSocketServer(string url, IClientManager clientManager, ITransmitAudio transmitAudio,IReceiveAudio receiveAudio)
+        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio)
         {
-            _url = url;
+            _url = $"http://*:{port}/";
             _listener = new HttpListener();
-            _listener.Prefixes.Add(url);
+            _listener.Prefixes.Add(_url);
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
         }
@@ -31,6 +31,7 @@ namespace server.Classes.WebSocket
             _listener.Start();
             _isRunning = true;
             Console.WriteLine($"{Constants.WebServerStartedOn}{_url}");
+            Console.WriteLine($"{Constants.ServerAccessible} {GetServerAddress()}");
 
             while (_isRunning)
             {
@@ -47,11 +48,18 @@ namespace server.Classes.WebSocket
             }
         }
 
-        public Task StopAsync()
+        //LAN IP address
+        public string GetServerAddress()
         {
-            _isRunning = false;
-            _listener.Stop();
-            return Task.CompletedTask;
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    return $"http://{ip}:{Constants.WebSocketServerPort}/";
+                }
+            }
+            throw new Exception();
         }
 
         private async Task ProcessWebSocketRequest(HttpListenerContext context)
@@ -62,12 +70,12 @@ namespace server.Classes.WebSocket
                 webSocketContext = await context.AcceptWebSocketAsync(null);
                 var webSocket = webSocketContext.WebSocket;
 
-                var handler = new WebSocketController(_clientManager,_receiveAudio);
+                var handler = new WebSocketController(_clientManager, _receiveAudio);
                 await handler.HandleConnection(webSocket);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
             finally
             {
@@ -78,5 +86,11 @@ namespace server.Classes.WebSocket
             }
         }
 
+        public Task StopAsync()
+        {
+            _isRunning = false;
+            _listener.Stop();
+            return Task.CompletedTask;
+        }
     }
 }

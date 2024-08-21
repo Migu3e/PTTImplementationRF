@@ -18,6 +18,7 @@ public static class Constants
     public const string ConnectedClientsListMessage = "Connected WebSocket clients ({0}):";
     public const string ClientInfoMessage = "- ID: {0}, Channel: {1}";
     public const string ClientDisconnectReason = "Client disconnected";
+    public const string ServerAccessible = "Server is accessible at:";
     
     //websockethandeler
     //some will be deleted when debug is not needed
@@ -30,7 +31,8 @@ public static class Constants
     //program
     public const string StartedConnection = "WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.";
     public const string StoppedConnection = "WebSocket Server stopped";
-    public const string WebServerStartedOn = "WebSocket Server started on ";
+    public const string WebServerStartedOn = "Starting WebSocket server on LAN... ";
+    public const string ServerConnectionPoint = "Server is running. LAN clients can connect to:";
     
     //others
     public const int SampleRate = 44100;

@@ -9,11 +9,11 @@ namespace server.Classes.ClientHandler
 {
     public class ClientManager : IClientManager
     {
-        private readonly List<Client> clients = new List<Client>();
+        private readonly IEnumerable<Client> clients = new List<Client>();
 
         public void AddClient(Client client)
         {
-            clients.Add(client);
+            ((List<Client>)clients).Add(client);
             Console.WriteLine(Constants.ClientConnectedMessage, client.Id);
         }
 
@@ -22,10 +22,10 @@ namespace server.Classes.ClientHandler
             var client = clients.FirstOrDefault(c => c.Id == id);
             if (client != null)
             {
-                clients.Remove(client);
+                ((List<Client>)clients).Remove(client);
                 Console.WriteLine(Constants.ClientDisconnectedMessage, client.Id);
                 
-                client.WebSocket?.CloseAsync(WebSocketCloseStatus.NormalClosure, Constants.ClientDisconnectReason, CancellationToken.None).Wait();
+                client.WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, Constants.ClientDisconnectReason, CancellationToken.None).Wait();
             }
         }
 
@@ -36,7 +36,7 @@ namespace server.Classes.ClientHandler
 
         public void ListConnectedClients()
         {
-            Console.WriteLine(Constants.ConnectedClientsListMessage, clients.Count);
+            Console.WriteLine(Constants.ConnectedClientsListMessage, clients.Count());
             foreach (var client in clients)
             {
                 Console.WriteLine(Constants.ClientInfoMessage, client.Id, client.Frequency);

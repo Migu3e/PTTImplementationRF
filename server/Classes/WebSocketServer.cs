@@ -19,7 +19,6 @@ namespace server.Classes.WebSocket
 
         public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio)
         {
-            // Use "*" as the host to listen on all available network interfaces
             _url = $"http://*:{port}/";
             _listener = new HttpListener();
             _listener.Prefixes.Add(_url);

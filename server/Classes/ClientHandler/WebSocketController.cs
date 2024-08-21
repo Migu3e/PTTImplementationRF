@@ -82,6 +82,20 @@ namespace server.Classes.WebSocket
                             Console.WriteLine("Error parsing volume: {0}", clientNewVul);
                         }
                     }
+                    
+                    if (message.StartsWith("ONF|"))
+                    {
+                        string clientNewSettings = message.Substring(4);
+                        Console.WriteLine($"{client.Id} sent option: {clientNewSettings}");
+                        if (clientNewSettings == "ON")
+                        {
+                            client.OnOff = true;
+                        }
+                        else
+                        {
+                            client.OnOff = false;
+                        }
+                    }
             
                     if (result.EndOfMessage)
                     {

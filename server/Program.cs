@@ -11,7 +11,6 @@ using server.Interface;
 
 
 
-var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 var clientManager = new ClientManager();
 
 var mongoClient = new MongoClient(Constants.MongoConnectionString);

@@ -9,12 +9,12 @@ using server.Const;
 
 namespace server.Classes.WebSocket
 {
-    public class WebSocketHandler
+    public class WebSocketController
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
 
-        public WebSocketHandler(IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
@@ -22,19 +22,16 @@ namespace server.Classes.WebSocket
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
         {
-            var client = new Client(Guid.NewGuid().ToString(), webSocket);
+            var shortId = Guid.NewGuid().ToString("").Substring(0,8);
+            var client = new Client(shortId, webSocket);
             _clientManager.AddClient(client);
 
             await SendClientId(webSocket, client.Id);
 
-            try
-            {
-                await ProcessMessages(webSocket, client);
-            }
-            finally
-            {
-                _clientManager.RemoveClient(client.Id);
-            }
+            await ProcessMessages(webSocket, client);
+
+            _clientManager.RemoveClient(client.Id);
+
         }
 
         private async Task SendClientId(System.Net.WebSockets.WebSocket webSocket, string clientId)
@@ -52,7 +49,47 @@ namespace server.Classes.WebSocket
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
     
-                if (result.MessageType == WebSocketMessageType.Binary)
+                
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
+                    if (message.StartsWith("FRE|"))
+                    {
+                        string clientNewfRequency = message.Substring(4);
+                        double frequency;
+                        if (double.TryParse(clientNewfRequency, out frequency))
+                        {
+                            client.Frequency = frequency;
+                            Console.WriteLine($"{client.Id} sent frequency: {frequency}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error parsing frequency: {0}", clientNewfRequency);
+                        }
+                    }
+                    if (message.StartsWith("VUL|"))
+                    {
+                        string clientNewVul = message.Substring(4);
+                        double vulome;
+                        
+                        if (double.TryParse(clientNewVul, out vulome))
+                        {
+                            client.Volume = (int)vulome;
+                            Console.WriteLine($"{client.Id} sent volume: {vulome}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error parsing volume: {0}", clientNewVul);
+                        }
+                    }
+            
+                    if (result.EndOfMessage)
+                    {
+                        await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
+                        messageBuffer.Clear();
+                    }
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
                 {
                     messageBuffer.AddRange(buffer.Take(result.Count));
             
@@ -81,14 +118,13 @@ namespace server.Classes.WebSocket
 
             if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA)
             {
-                byte channel = buffer[3];
-        
+
                 int audioLength = count - 8;
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
 
-                client.Channel = channel;
+                Console.WriteLine($"{client.Id} send on {client.Frequency}");
                 await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
             }
             else 

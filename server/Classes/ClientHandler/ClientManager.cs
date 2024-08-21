@@ -39,7 +39,7 @@ namespace server.Classes.ClientHandler
             Console.WriteLine(Constants.ConnectedClientsListMessage, clients.Count);
             foreach (var client in clients)
             {
-                Console.WriteLine(Constants.ClientInfoMessage, client.Id, client.Channel);
+                Console.WriteLine(Constants.ClientInfoMessage, client.Id, client.Frequency);
             }
         }
     }

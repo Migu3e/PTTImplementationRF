@@ -59,12 +59,16 @@ namespace server.Classes.WebSocket
                         double frequency;
                         if (double.TryParse(clientNewfRequency, out frequency))
                         {
-                            client.Frequency = frequency;
-                            Console.WriteLine($"{client.Id} sent frequency: {frequency}");
+                            //spam thingy
+                            if (client.Frequency != frequency)
+                            {
+                                client.Frequency = frequency;
+                                Console.WriteLine(Constants.ReceivedOptionFrequency, client.Id,client.Frequency);
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("Error parsing frequency: {0}", clientNewfRequency);
+                            Console.WriteLine($"{Constants.ErrorInFrequency}: {clientNewfRequency}");
                         }
                     }
                     if (message.StartsWith("VUL|"))
@@ -74,33 +78,35 @@ namespace server.Classes.WebSocket
                         
                         if (double.TryParse(clientNewVul, out vulome))
                         {
-                            client.Volume = (int)vulome;
-                            Console.WriteLine($"{client.Id} sent volume: {vulome}");
+                            if (client.Volume != vulome)
+                            {
+                                client.Volume = (int)vulome;
+                                Console.WriteLine(Constants.ReceivedOptionVolume, client.Id,client.Volume);
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("Error parsing volume: {0}", clientNewVul);
+                            Console.WriteLine($"{Constants.ErrorInVolume}: {clientNewVul}");
                         }
                     }
                     
                     if (message.StartsWith("ONF|"))
                     {
                         string clientNewSettings = message.Substring(4);
-                        Console.WriteLine($"{client.Id} sent option: {clientNewSettings}");
+                        Console.WriteLine(Constants.ReceivedOptionOnOff,client.Id,clientNewSettings);
                         if (clientNewSettings == "ON")
                         {
                             client.OnOff = true;
                         }
-                        else
+                        else if (clientNewSettings == "OFF")
                         {
                             client.OnOff = false;
                         }
-                    }
-            
-                    if (result.EndOfMessage)
-                    {
-                        await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
-                        messageBuffer.Clear();
+                        else
+                        {
+                            Console.WriteLine($"{Constants.ErrorInVolume}: {Constants.ErrorInOnOff}");
+                        }
+                        // im ze lo oved ani efga be misho
                     }
                 }
                 else if (result.MessageType == WebSocketMessageType.Binary)
@@ -112,12 +118,6 @@ namespace server.Classes.WebSocket
                         await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
                         messageBuffer.Clear();
                     }
-                }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
-                    Console.WriteLine(Constants.WebSocketConnectionClosed);
-                    break;
                 }
             }
         }
@@ -137,8 +137,6 @@ namespace server.Classes.WebSocket
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
-
-                Console.WriteLine($"{client.Id} send on {client.Frequency}");
                 await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
             }
             else 

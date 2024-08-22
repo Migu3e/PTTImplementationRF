@@ -1,5 +1,3 @@
-using System.Net.WebSockets;
-
 namespace server.Classes.ClientHandler
 {
     public class Client

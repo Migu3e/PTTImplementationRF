@@ -17,7 +17,7 @@ namespace server.Classes.WebSocket
         private bool _isRunning;
         private readonly IReceiveAudio _receiveAudio;
 
-        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio)
+        public WebSocketServer(int port, IClientManager clientManager, IReceiveAudio receiveAudio)
         {
             _url = $"http://*:{port}/";
             _listener = new HttpListener();
@@ -30,7 +30,6 @@ namespace server.Classes.WebSocket
         {
             _listener.Start();
             _isRunning = true;
-            Console.WriteLine($"{Constants.WebServerStartedOn}{_url}");
             Console.WriteLine($"{Constants.ServerAccessible} {GetServerAddress()}");
 
             while (_isRunning)

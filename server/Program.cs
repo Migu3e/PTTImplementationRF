@@ -1,13 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using GridFs;
+﻿using GridFs;
 using MongoDB.Driver;
 using server.Classes;
 using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
 using server.Classes.WebSocket;
 using server.Const;
-using server.Interface;
 
 
 
@@ -20,7 +17,7 @@ var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, receiveAudio);
 
 
 var serverOptions = new ServerOptions(clientManager, webSocketServer);

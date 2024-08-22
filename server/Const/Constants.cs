@@ -33,6 +33,11 @@ public static class Constants
     public const string ReceivedOptionOnOff = "client {0} is now {1}";
     public const string ReceivedOptionFrequency = "client {0} is now on frequency to: {1}";
     public const string ReceivedOptionVolume = "client {0} has changed volume to: {1}";
+    
+    
+    //transmitaudio
+    public const string ErrorSendingAudioToClient = "Error sending audio to client: {0}, {1}";
+
 
 
 

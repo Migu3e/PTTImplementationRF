@@ -41,8 +41,6 @@ public class TransmitAudio : ITransmitAudio
             Buffer.BlockCopy(sampleRateBytes, 0, messageToSend, header.Length, sampleRateBytes.Length);
             Buffer.BlockCopy(audioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
             
-            Console.WriteLine($"{client.Id} sent frequency: {client.Frequency} audio: {client.Volume}");
-
             byte[] adjustedAudioData = AdjustVolume(audioData, client.Volume);
             Buffer.BlockCopy(adjustedAudioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
 
@@ -54,7 +52,7 @@ public class TransmitAudio : ITransmitAudio
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error sending audio to client {client.Id}: {ex.Message}");
+            Console.WriteLine(Constants.ErrorSendingAudioToClient,client.Id,ex.Message);
         }
     }
     private byte[] AdjustVolume(byte[] audioData, int volume)

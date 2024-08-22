@@ -20,7 +20,7 @@ var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, receiveAudio);
 
 
 var serverOptions = new ServerOptions(clientManager, webSocketServer);

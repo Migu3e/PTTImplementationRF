@@ -3,7 +3,6 @@ using MongoDB.Driver.GridFS;
 using MongoDB.Bson;
 using server.Interface;
 using server.Const;
-using System.IO;
 
 namespace GridFs;
 

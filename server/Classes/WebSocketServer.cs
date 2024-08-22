@@ -30,7 +30,6 @@ namespace server.Classes.WebSocket
         {
             _listener.Start();
             _isRunning = true;
-            Console.WriteLine($"{Constants.WebServerStartedOn}{_url}");
             Console.WriteLine($"{Constants.ServerAccessible} {GetServerAddress()}");
 
             while (_isRunning)

@@ -44,95 +44,118 @@ namespace server.Classes.WebSocket
         {
             var buffer = new byte[8192];
             var messageBuffer = new List<byte>();
-    
+
             while (webSocket.State == WebSocketState.Open)
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-    
-                
+
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
-                    if (message.StartsWith("FRE|"))
-                    {
-                        string clientNewfRequency = message.Substring(4);
-                        double frequency;
-                        if (double.TryParse(clientNewfRequency, out frequency))
-                        {
-                            //spam thingy
-                            if (client.Frequency != frequency)
-                            {
-                                client.Frequency = frequency;
-                                await _loggingService.LogClientAction(client.Id, $"moved to frequency {frequency}");
-                                await _loggingService.LogServerAction($"Client {client.Id} changed frequency to {frequency}");
-                                Console.WriteLine(Constants.ReceivedOptionFrequency, client.Id,client.Frequency);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInFrequency}: {clientNewfRequency}");
-                        }
-                    }
-                    if (message.StartsWith("VUL|"))
-                    {
-                        string clientNewVul = message.Substring(4);
-                        double vulome;
-                        
-                        if (double.TryParse(clientNewVul, out vulome))
-                        {
-                            if (client.Volume != vulome)
-                            {
-                                client.Volume = (int)vulome;
-                                await _loggingService.LogClientAction(client.Id, $"changed volume to {vulome}");
-                                await _loggingService.LogServerAction($"Client {client.Id} change volume to {vulome}");
-                                Console.WriteLine(Constants.ReceivedOptionVolume, client.Id,client.Volume);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInVolume}: {clientNewVul}");
-                        }
-                    }
-                    
-                    if (message.StartsWith("ONF|"))
-                    {
-                        string clientNewSettings = message.Substring(4);
-                        Console.WriteLine(Constants.ReceivedOptionOnOff,client.Id,clientNewSettings);
-                        if (clientNewSettings == "ON")
-                        {
-                            client.OnOff = true;
-                            await _loggingService.LogClientAction(client.Id, "turned on");
-                            await _loggingService.LogServerAction($"Client {client.Id} turned on");
-
-
-                        }
-                        else if (clientNewSettings == "OFF")
-                        {
-                            client.OnOff = false;
-                            await _loggingService.LogClientAction(client.Id, "turned off");
-                            await _loggingService.LogServerAction($"Client {client.Id} turned off");
-
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInVolume}: {Constants.ErrorInOnOff}");
-                        }
-                        // im ze lo oved ani efga be misho
-                    }
+                    await ProcessTextMessage(client, message);
                 }
                 else if (result.MessageType == WebSocketMessageType.Binary)
                 {
                     messageBuffer.AddRange(buffer.Take(result.Count));
-            
+
                     if (result.EndOfMessage)
                     {
                         await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
                         messageBuffer.Clear();
                     }
                 }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
+                    break;
+                }
             }
         }
 
+        private async Task ProcessTextMessage(Client client, string message)
+        {
+            var parts = message.Split('|');
+            if (parts.Length != 2)
+            {
+                Console.WriteLine($"Invalid message format: {message}");
+                return;
+            }
+
+            var command = parts[0];
+            var value = parts[1];
+
+            switch (command)
+            {
+                case "FRE":
+                    await ProcessFrequencyChange(client, value);
+                    break;
+                case "VUL":
+                    await ProcessVolumeChange(client, value);
+                    break;
+                case "ONF":
+                    await ProcessOnOffChange(client, value);
+                    break;
+                default:
+                    Console.WriteLine($"Unknown command: {command}");
+                    break;
+            }
+        }
+
+        private async Task ProcessFrequencyChange(Client client, string frequencyString)
+        {
+            if (double.TryParse(frequencyString, out double frequency))
+            {
+                if (client.Frequency != frequency)
+                {
+                    client.Frequency = frequency;
+                    await _loggingService.LogClientAction(client.Id, $"moved to frequency {frequency}");
+                    await _loggingService.LogServerAction($"Client {client.Id} changed frequency to {frequency}");
+                    Console.WriteLine(Constants.ReceivedOptionFrequency, client.Id, client.Frequency);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"{Constants.ErrorInFrequency}: {frequencyString}");
+            }
+        }
+
+        private async Task ProcessVolumeChange(Client client, string volumeString)
+        {
+            if (double.TryParse(volumeString, out double volume))
+            {
+                if (client.Volume != volume)
+                {
+                    client.Volume = (int)volume;
+                    await _loggingService.LogClientAction(client.Id, $"changed volume to {volume}");
+                    await _loggingService.LogServerAction($"Client {client.Id} change volume to {volume}");
+                    Console.WriteLine(Constants.ReceivedOptionVolume, client.Id, client.Volume);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"{Constants.ErrorInVolume}: {volumeString}");
+            }
+        }
+
+        private async Task ProcessOnOffChange(Client client, string stateString)
+        {
+            if (stateString == "ON" || stateString == "OFF")
+            {
+                bool newState = stateString == "ON";
+                if (client.OnOff != newState)
+                {
+                    client.OnOff = newState;
+                    string stateDescription = newState ? "turned on" : "turned off";
+                    await _loggingService.LogClientAction(client.Id, stateDescription);
+                    await _loggingService.LogServerAction($"Client {client.Id} {stateDescription}");
+                    Console.WriteLine(Constants.ReceivedOptionOnOff, client.Id, stateString);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"{Constants.ErrorInOnOff}: {stateString}");
+            }
+        }
         private async Task ProcessAudioMessage(byte[] buffer, int count, Client client)
         {
             if (count < 8) 

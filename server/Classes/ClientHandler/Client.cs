@@ -7,7 +7,7 @@ namespace server.Classes.ClientHandler
     {
         public string Id { get; }
         public System.Net.WebSockets.WebSocket WebSocket { get; }
-        public FrequencyChannel Channel { get; set; }
+        public double Frequency { get; set; }
         public int Volume { get; set; }
         public bool OnOff { get; set; }
 
@@ -15,11 +15,10 @@ namespace server.Classes.ClientHandler
         {
             Id = id;
             WebSocket = webSocket;
-            Channel = FrequencyChannel.Channel1;
+            Frequency = 30.0000;
             Volume = 50;
             OnOff = false;
         }
 
-        public double Frequency => (double)Channel / 10000;
     }
 }

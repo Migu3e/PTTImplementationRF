@@ -13,11 +13,11 @@ namespace server.Classes.ClientHandler
             _settings = database.GetCollection<ClientSettings>("ClientSettings");
         }
 
-        public async Task UpdateSettingsAsync(string clientId, FrequencyChannel channel, int volume)
+        public async Task UpdateSettingsAsync(string clientId, double Frequency, int volume)
         {
             var filter = Builders<ClientSettings>.Filter.Eq(s => s.ClientId, clientId);
             var update = Builders<ClientSettings>.Update
-                .Set(s => s.Channel, channel)
+                .Set(s => s.Frequency, Frequency)
                 .Set(s => s.Volume, volume);
 
             await _settings.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });

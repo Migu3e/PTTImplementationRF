@@ -1,7 +1,7 @@
-
 using System.Net.WebSockets;
 using System.Text;
 using server.Classes.ClientHandler;
+using server.Classes.Logging;
 using server.Interface;
 using server.Const;
 
@@ -11,11 +11,13 @@ namespace server.Classes.WebSocket
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
+        private readonly LoggingService _loggingService;
 
-        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio, LoggingService loggingService)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
+            _loggingService = loggingService;
         }
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
@@ -61,6 +63,8 @@ namespace server.Classes.WebSocket
                             if (client.Frequency != frequency)
                             {
                                 client.Frequency = frequency;
+                                await _loggingService.LogClientAction(client.Id, $"moved to frequency {frequency}");
+                                await _loggingService.LogServerAction($"Client {client.Id} changed frequency to {frequency}");
                                 Console.WriteLine(Constants.ReceivedOptionFrequency, client.Id,client.Frequency);
                             }
                         }
@@ -79,6 +83,8 @@ namespace server.Classes.WebSocket
                             if (client.Volume != vulome)
                             {
                                 client.Volume = (int)vulome;
+                                await _loggingService.LogClientAction(client.Id, $"changed volume to {vulome}");
+                                await _loggingService.LogServerAction($"Client {client.Id} change volume to {vulome}");
                                 Console.WriteLine(Constants.ReceivedOptionVolume, client.Id,client.Volume);
                             }
                         }
@@ -95,10 +101,17 @@ namespace server.Classes.WebSocket
                         if (clientNewSettings == "ON")
                         {
                             client.OnOff = true;
+                            await _loggingService.LogClientAction(client.Id, "turned on");
+                            await _loggingService.LogServerAction($"Client {client.Id} turned on");
+
+
                         }
                         else if (clientNewSettings == "OFF")
                         {
                             client.OnOff = false;
+                            await _loggingService.LogClientAction(client.Id, "turned off");
+                            await _loggingService.LogServerAction($"Client {client.Id} turned off");
+
                         }
                         else
                         {
@@ -151,7 +164,10 @@ namespace server.Classes.WebSocket
 
                 Console.WriteLine(Constants.ReceivedFullAudioInfo, audioLength);
 
+
+                await _loggingService.LogClientAction(client.Id, "full message arrived");
                 await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
+                
             }
         }
     }

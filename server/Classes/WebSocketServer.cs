@@ -2,8 +2,7 @@ using System;
 using System.Net;
 using System.Net.WebSockets;
 using System.Net.Sockets;
-using System.Threading.Tasks;
-using server.Classes.AudioHandler;
+using server.Classes.Logging;
 using server.Const;
 using server.Interface;
 
@@ -16,14 +15,16 @@ namespace server.Classes.WebSocket
         private readonly IClientManager _clientManager;
         private bool _isRunning;
         private readonly IReceiveAudio _receiveAudio;
+        private readonly LoggingService _loggingService;
 
-        public WebSocketServer(int port, IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio, LoggingService loggingService)
         {
             _url = $"http://*:{port}/";
             _listener = new HttpListener();
             _listener.Prefixes.Add(_url);
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
+            _loggingService = loggingService;
         }
 
         public async Task StartAsync()
@@ -69,7 +70,7 @@ namespace server.Classes.WebSocket
                 webSocketContext = await context.AcceptWebSocketAsync(null);
                 var webSocket = webSocketContext.WebSocket;
 
-                var handler = new WebSocketController(_clientManager, _receiveAudio);
+                var handler = new WebSocketController(_clientManager, _receiveAudio, _loggingService);
                 await handler.HandleConnection(webSocket);
             }
             catch (Exception ex)

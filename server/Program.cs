@@ -3,21 +3,24 @@ using MongoDB.Driver;
 using server.Classes;
 using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
+using server.Classes.Logging;
 using server.Classes.WebSocket;
 using server.Const;
-
 
 
 var clientManager = new ClientManager();
 
 var mongoClient = new MongoClient(Constants.MongoConnectionString);
-var database = mongoClient.GetDatabase(Constants.DatabaseName);
+var databaseAudio = mongoClient.GetDatabase(Constants.DatabaseNameAudio);
+var databaseLogs = mongoClient.GetDatabase(Constants.DatabaseNameLogs);
 
-var gridFsManager = new GridFsManager(database);
+
+var gridFsManager = new GridFsManager(databaseAudio);
+var loggingService = new LoggingService(databaseLogs);
 var transmitAudio = new TransmitAudio(clientManager);
-var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
+var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager, loggingService);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, receiveAudio);
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio, loggingService);
 
 
 var serverOptions = new ServerOptions(clientManager, webSocketServer);

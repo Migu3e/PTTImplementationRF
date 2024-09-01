@@ -1,6 +1,8 @@
-
+using System;
 using System.Net.WebSockets;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using server.Classes.ClientHandler;
 using server.Interface;
 using server.Const;
@@ -11,7 +13,7 @@ namespace server.Classes.WebSocket
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
-
+        
         public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
         {
             _clientManager = clientManager;
@@ -20,15 +22,23 @@ namespace server.Classes.WebSocket
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
         {
-            var shortId = Guid.NewGuid().ToString("").Substring(0,8);
-            var client = new Client(shortId, webSocket);
-            _clientManager.AddClient(client);
+            try
+            {
+                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                var client = new Client(shortId, webSocket);
+                _clientManager.AddClient(client);
 
-            await SendClientId(webSocket, client.Id);
+                await SendClientId(webSocket, client.Id);
 
-            await ProcessMessages(webSocket, client);
+                await ProcessMessages(webSocket, client);
 
-            _clientManager.RemoveClient(client.Id);
+                _clientManager.RemoveClient(client.Id);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
 
         }
 
@@ -46,68 +56,7 @@ namespace server.Classes.WebSocket
             while (webSocket.State == WebSocketState.Open)
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-    
-                
-                if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
-                    if (message.StartsWith("FRE|"))
-                    {
-                        string clientNewfRequency = message.Substring(4);
-                        double frequency;
-                        if (double.TryParse(clientNewfRequency, out frequency))
-                        {
-                            //spam thingy
-                            if (client.Frequency != frequency)
-                            {
-                                client.Frequency = frequency;
-                                Console.WriteLine(Constants.ReceivedOptionFrequency, client.Id,client.Frequency);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInFrequency}: {clientNewfRequency}");
-                        }
-                    }
-                    if (message.StartsWith("VUL|"))
-                    {
-                        string clientNewVul = message.Substring(4);
-                        double vulome;
-                        
-                        if (double.TryParse(clientNewVul, out vulome))
-                        {
-                            if (client.Volume != vulome)
-                            {
-                                client.Volume = (int)vulome;
-                                Console.WriteLine(Constants.ReceivedOptionVolume, client.Id,client.Volume);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInVolume}: {clientNewVul}");
-                        }
-                    }
-                    
-                    if (message.StartsWith("ONF|"))
-                    {
-                        string clientNewSettings = message.Substring(4);
-                        Console.WriteLine(Constants.ReceivedOptionOnOff,client.Id,clientNewSettings);
-                        if (clientNewSettings == "ON")
-                        {
-                            client.OnOff = true;
-                        }
-                        else if (clientNewSettings == "OFF")
-                        {
-                            client.OnOff = false;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{Constants.ErrorInVolume}: {Constants.ErrorInOnOff}");
-                        }
-                        // im ze lo oved ani efga be misho
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Binary)
+                if (result.MessageType == WebSocketMessageType.Binary)
                 {
                     messageBuffer.AddRange(buffer.Take(result.Count));
             
@@ -116,6 +65,30 @@ namespace server.Classes.WebSocket
                         await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
                         messageBuffer.Clear();
                     }
+                }
+                else if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
+
+                    if (message.StartsWith("ONF|"))
+                    {
+                        string clientNewSettings = message.Substring(4);
+                        Console.WriteLine($"{client.Id} sent option: {clientNewSettings}");
+                        if (clientNewSettings == "ON")
+                        {
+                            client.OnOff = true;
+                        }
+                        else
+                        {
+                            client.OnOff = false;
+                        }
+                    }
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
+                    Console.WriteLine(Constants.WebSocketConnectionClosed);
+                    break;
                 }
             }
         }
@@ -128,16 +101,16 @@ namespace server.Classes.WebSocket
                 return;
             }
 
-            if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA)
+            if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA && buffer[3] == 0xAA)
             {
-
                 int audioLength = count - 8;
                 byte[] audioData = new byte[audioLength];
                 Array.Copy(buffer, 8, audioData, 0, audioLength);
 
+                Console.WriteLine($"{client.Id} send on {client.Frequency}");
                 await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
             }
-            else 
+            else if (buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
             {
                 int audioLength = BitConverter.ToInt32(buffer, 4);
                 if (count < 8 + audioLength)
@@ -154,5 +127,7 @@ namespace server.Classes.WebSocket
                 await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
             }
         }
+        
+
     }
 }

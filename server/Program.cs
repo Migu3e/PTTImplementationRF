@@ -1,38 +1,42 @@
-﻿using GridFs;
+﻿using System.Net;
+using GridFs;
 using MongoDB.Driver;
-using server.Classes;
 using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
 using server.Classes.WebSocket;
 using server.Const;
 
 
-
-var clientManager = new ClientManager();
-
 var mongoClient = new MongoClient(Constants.MongoConnectionString);
 var database = mongoClient.GetDatabase(Constants.DatabaseName);
 
+var clientManager = new ClientManager();
+var clientSettingsService = new ClientSettingsService(database);
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, receiveAudio);
-
-
-var serverOptions = new ServerOptions(clientManager, webSocketServer);
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
 var webSocketServerTask = webSocketServer.StartAsync();
 
+// Start HTTP listener
+var httpListener = new HttpListener();
+httpListener.Prefixes.Add("http://localhost:5000/");
+httpListener.Start();
+
 Console.WriteLine(Constants.StartedConnection);
-Console.WriteLine($"{Constants.ServerConnectionPoint} {webSocketServer.GetServerAddress()}");
+Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5000");
 
+var httpRequestHandler = new HttpRequestHandler(clientManager, clientSettingsService);
 
-bool isRunning = true;
-while (isRunning)
+// Handle HTTP requests
+_ = Task.Run(async () =>
 {
-    isRunning = await serverOptions.HandleInput();
-    await Task.Delay(100);
-}
+    while (true)
+    {
+        var context = await httpListener.GetContextAsync();
+        _ = httpRequestHandler.HandleRequestAsync(context);
+    }
+});
 
-Console.WriteLine(Constants.StoppedConnection);
 await webSocketServerTask;

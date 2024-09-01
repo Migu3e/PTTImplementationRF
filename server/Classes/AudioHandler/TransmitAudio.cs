@@ -48,7 +48,7 @@ public class TransmitAudio : ITransmitAudio
             if (client.WebSocket.State == WebSocketState.Open)
             {
                 await client.WebSocket.SendAsync(new ArraySegment<byte>(messageToSend), WebSocketMessageType.Binary, true, CancellationToken.None);
-            }
+                Console.WriteLine($"Sent audio to client {client.Id}, length: {messageToSend.Length} bytes");            }
         }
         catch (Exception ex)
         {

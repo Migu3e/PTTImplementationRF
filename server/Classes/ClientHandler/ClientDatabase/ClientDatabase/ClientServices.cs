@@ -14,7 +14,9 @@ namespace server.ClientHandler.ClientDatabase
 
         public async Task<ClientModel> GetAccount(string clientId)
         {
-            return await _accounts.Find(a => a.ClientID == clientId).FirstOrDefaultAsync();
+            var filter = Builders<ClientModel>.Filter.Eq(a => a.ClientID, clientId);
+            var account = await _accounts.Find(filter).FirstOrDefaultAsync();
+            return account;
         }
 
         public async Task CreateAccount(ClientModel account)

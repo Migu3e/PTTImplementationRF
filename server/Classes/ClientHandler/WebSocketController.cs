@@ -1,133 +1,105 @@
-using System;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using server.Classes.ClientHandler;
 using server.Interface;
-using server.Const;
 
-namespace server.Classes.WebSocket
+public class WebSocketController
 {
-    public class WebSocketController
-    {
-        private readonly IClientManager _clientManager;
-        private readonly IReceiveAudio _receiveAudio;
-        
-        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
-        {
-            _clientManager = clientManager;
-            _receiveAudio = receiveAudio;
-        }
-
-        public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
-        {
-            try
-            {
-                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                var client = new Client(shortId, webSocket);
-                _clientManager.AddClient(client);
-
-                await SendClientId(webSocket, client.Id);
-
-                await ProcessMessages(webSocket, client);
-
-                _clientManager.RemoveClient(client.Id);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-
-        }
-
-        private async Task SendClientId(System.Net.WebSockets.WebSocket webSocket, string clientId)
-        {
-            var bytes = Encoding.UTF8.GetBytes(clientId);
-            await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-
-        private async Task ProcessMessages(System.Net.WebSockets.WebSocket webSocket, Client client)
-        {
-            var buffer = new byte[8192];
-            var messageBuffer = new List<byte>();
+    private readonly IClientManager _clientManager;
+    private readonly IReceiveAudio _receiveAudio;
     
-            while (webSocket.State == WebSocketState.Open)
-            {
-                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Binary)
-                {
-                    messageBuffer.AddRange(buffer.Take(result.Count));
-            
-                    if (result.EndOfMessage)
-                    {
-                        await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
-                        messageBuffer.Clear();
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
+    public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
+    {
+        _clientManager = clientManager;
+        _receiveAudio = receiveAudio;
+    }
 
-                    if (message.StartsWith("ONF|"))
-                    {
-                        string clientNewSettings = message.Substring(4);
-                        Console.WriteLine($"{client.Id} sent option: {clientNewSettings}");
-                        if (clientNewSettings == "ON")
-                        {
-                            client.OnOff = true;
-                        }
-                        else
-                        {
-                            client.OnOff = false;
-                        }
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
-                    Console.WriteLine(Constants.WebSocketConnectionClosed);
-                    break;
-                }
-            }
-        }
-
-        private async Task ProcessAudioMessage(byte[] buffer, int count, Client client)
+    public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
+    {
+        try
         {
-            if (count < 8) 
-            {
-                Console.WriteLine(Constants.ShortMessageError, count);
-                return;
-            }
+            // Wait for the client to send its ID
+            var buffer = new byte[1024 * 4];
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var clientId = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
 
-            if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA && buffer[3] == 0xAA)
-            {
-                int audioLength = count - 8;
-                byte[] audioData = new byte[audioLength];
-                Array.Copy(buffer, 8, audioData, 0, audioLength);
+            Console.WriteLine($"Received client ID: {clientId}");
 
-                Console.WriteLine($"{client.Id} send on {client.Frequency}");
-                await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
-            }
-            else if (buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
+            var client = new Client(clientId, webSocket);
+            _clientManager.AddClient(client);
+
+            await SendConnectionConfirmation(webSocket);
+
+            await ProcessMessages(webSocket, client);
+
+            _clientManager.RemoveClient(client.Id);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error in HandleConnection: {e.Message}");
+            throw;
+        }
+    }
+
+    private async Task SendConnectionConfirmation(System.Net.WebSockets.WebSocket webSocket)
+    {
+        var confirmationMessage = "Connected";
+        var bytes = Encoding.UTF8.GetBytes(confirmationMessage);
+        await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+    }
+
+    private async Task ProcessMessages(System.Net.WebSockets.WebSocket webSocket, Client client)
+    {
+        var buffer = new byte[1024 * 4];
+        while (webSocket.State == WebSocketState.Open)
+        {
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            if (result.MessageType == WebSocketMessageType.Binary)
             {
-                int audioLength = BitConverter.ToInt32(buffer, 4);
-                if (count < 8 + audioLength)
+                if (result.Count >= 8 && buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF &&
+                    buffer[3] == 0xFF)
                 {
-                    Console.WriteLine(Constants.IncompleteFullAudioMessage, 8 + audioLength, count);
-                    return;
+                    // This is a full audio message
+                    int audioLength = BitConverter.ToInt32(buffer, 4);
+                    byte[] fullAudioData = new byte[audioLength];
+                    Buffer.BlockCopy(buffer, 8, fullAudioData, 0, Math.Min(audioLength, result.Count - 8));
+
+                    // If the audio data is larger than the buffer, we need to receive the rest
+                    int receivedLength = Math.Min(audioLength, result.Count - 8);
+                    while (receivedLength < audioLength)
+                    {
+                        result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                        Buffer.BlockCopy(buffer, 0, fullAudioData, receivedLength,
+                            Math.Min(audioLength - receivedLength, result.Count));
+                        receivedLength += result.Count;
+                    }
+
+                    Console.WriteLine($"Received full audio from client {client.Id}, length: {audioLength} bytes");
+                    await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, fullAudioData);
                 }
+                else
+                {
+                    // This is a real-time audio chunk
+                    int sampleRate = BitConverter.ToInt32(buffer, 4);
+                    byte[] audioData = new byte[result.Count - 8];
+                    Buffer.BlockCopy(buffer, 8, audioData, 0, audioData.Length);
 
-                byte[] audioData = new byte[audioLength];
-                Array.Copy(buffer, 8, audioData, 0, audioLength);
-
-                Console.WriteLine(Constants.ReceivedFullAudioInfo, audioLength);
-
-                await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
+                    Console.WriteLine($"Received real-time audio from client {client.Id}, length: {audioData.Length} bytes, sample rate: {sampleRate}");
+                    await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
+                }
+            }
+            else if (result.MessageType == WebSocketMessageType.Text)
+            {
+                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                Console.WriteLine($"Received text message from client {client.Id}: {message}");
+                // Handle text messages if needed
+            }
+            else if (result.MessageType == WebSocketMessageType.Close)
+            {
+                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client",
+                    CancellationToken.None);
+                break;
             }
         }
-        
-
     }
 }

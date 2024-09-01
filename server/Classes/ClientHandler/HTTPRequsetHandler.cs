@@ -36,6 +36,7 @@ namespace server.Classes.ClientHandler
             _frequencyService = frequencyService;
         }
 
+       
         public async Task HandleRequestAsync(HttpListenerContext context)
         {
             var request = context.Request;
@@ -61,17 +62,25 @@ namespace server.Classes.ClientHandler
                 }
                 else if (request.Url.AbsolutePath.StartsWith("/api/client/"))
                 {
-                    switch (request.HttpMethod)
+                    var pathParts = request.Url.AbsolutePath.Split('/');
+                    if (pathParts.Length >= 4 && pathParts[4] == "settings")
                     {
-                        case "PUT":
-                            await HandlePutRequest(request, response);
-                            break;
-                        case "GET":
-                            await HandleGetRequest(request, response);
-                            break;
-                        default:
-                            response.StatusCode = 405; // Method Not Allowed
-                            break;
+                        switch (request.HttpMethod)
+                        {
+                            case "GET":
+                                await HandleGetSettingsRequest(request, response);
+                                break;
+                            case "PUT":
+                                await HandleUpdateSettingsRequest(request, response);
+                                break;
+                            default:
+                                response.StatusCode = 405; // Method Not Allowed
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        response.StatusCode = 404; // Not Found
                     }
                 }
                 else
@@ -89,7 +98,68 @@ namespace server.Classes.ClientHandler
                 response.Close();
             }
         }
-        
+
+        private async Task HandleGetSettingsRequest(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            var pathParts = request.Url.AbsolutePath.Split('/');
+            var clientId = pathParts[3];
+
+            var account = await _accountService.GetAccount(clientId);
+            var channelInfo = await _channelService.GetChannelInfo(clientId);
+            var volume = await _volumeService.GetLastVolume(clientId);
+            var frequencyRange = await _frequencyService.GetFrequencyRange(account.Type);
+
+            if (account != null && channelInfo != null && frequencyRange != null)
+            {
+                var responseData = new
+                {
+                    clientId = account.ClientID,
+                    type = account.Type,
+                    channel = channelInfo.Channel,
+                    frequency = channelInfo.Frequency,
+                    volume = volume,
+                    minFrequency = frequencyRange.MinFrequency,
+                    maxFrequency = frequencyRange.MaxFrequency
+                };
+
+                await SendJsonResponse(response, responseData);
+            }
+            else
+            {
+                response.StatusCode = 404; // Not Found
+            }
+        }
+
+        private async Task HandleUpdateSettingsRequest(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            var pathParts = request.Url.AbsolutePath.Split('/');
+            var clientId = pathParts[3];
+
+            using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+            var body = await reader.ReadToEndAsync();
+            var settings = HttpUtility.ParseQueryString(body);
+
+            if (settings["frequency"] != null)
+            {
+                var frequency = double.Parse(settings["frequency"]);
+                await _channelService.UpdateChannelInfo(clientId, 1, frequency); // Assuming channel 1 for simplicity
+            }
+
+            if (settings["volume"] != null)
+            {
+                var volume = int.Parse(settings["volume"]);
+                await _volumeService.UpdateVolume(clientId, volume);
+            }
+
+            if (settings["onoff"] != null)
+            {
+                var onOff = bool.Parse(settings["onoff"]);
+                // Implement method to update on/off state if needed
+            }
+
+            response.StatusCode = 200; // OK
+            await SendJsonResponse(response, new { message = "Settings updated successfully" });
+        }
 
         private async Task HandleLoginRequest(HttpListenerRequest request, HttpListenerResponse response)
         {
@@ -117,7 +187,7 @@ namespace server.Classes.ClientHandler
                 var responseData = new
                 {
                     message = "Login successful",
-                    clientId = account.ClientID,
+                    clientId = account.ClientID, // This is now the same as the login ID
                     type = account.Type,
                     channel = channelInfo?.Channel ?? 1,
                     frequency = channelInfo?.Frequency ?? 30.0000,
@@ -295,5 +365,8 @@ namespace server.Classes.ClientHandler
             response.ContentLength64 = buffer.Length;
             await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
         }
+
+
+
     }
 }

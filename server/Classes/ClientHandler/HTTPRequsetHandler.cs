@@ -139,28 +139,37 @@ namespace server.Classes.ClientHandler
             var body = await reader.ReadToEndAsync();
             var settings = HttpUtility.ParseQueryString(body);
 
+            var client = _clientManager.GetAllClients().FirstOrDefault(c => c.Id == clientId);
+            if (client == null)
+            {
+                response.StatusCode = 404; // Not Found
+                await SendJsonResponse(response, new { message = "Client not found" });
+                return;
+            }
+
             if (settings["frequency"] != null)
             {
                 var frequency = double.Parse(settings["frequency"]);
+                client.Frequency = frequency;
                 await _channelService.UpdateChannelInfo(clientId, 1, frequency); // Assuming channel 1 for simplicity
             }
 
             if (settings["volume"] != null)
             {
                 var volume = int.Parse(settings["volume"]);
+                client.Volume = volume;
                 await _volumeService.UpdateVolume(clientId, volume);
             }
 
             if (settings["onoff"] != null)
             {
                 var onOff = bool.Parse(settings["onoff"]);
-                // Implement method to update on/off state if needed
+                client.OnOff = onOff;
             }
 
             response.StatusCode = 200; // OK
             await SendJsonResponse(response, new { message = "Settings updated successfully" });
         }
-
         private async Task HandleLoginRequest(HttpListenerRequest request, HttpListenerResponse response)
         {
             using var reader = new StreamReader(request.InputStream, request.ContentEncoding);

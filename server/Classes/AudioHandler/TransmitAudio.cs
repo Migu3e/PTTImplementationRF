@@ -39,22 +39,22 @@ public class TransmitAudio : ITransmitAudio
 
             Buffer.BlockCopy(header, 0, messageToSend, 0, header.Length);
             Buffer.BlockCopy(sampleRateBytes, 0, messageToSend, header.Length, sampleRateBytes.Length);
-            Buffer.BlockCopy(audioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
             
+            // Apply volume adjustment
             byte[] adjustedAudioData = AdjustVolume(audioData, client.Volume);
             Buffer.BlockCopy(adjustedAudioData, 0, messageToSend, header.Length + sampleRateBytes.Length, length);
-
 
             if (client.WebSocket.State == WebSocketState.Open)
             {
                 await client.WebSocket.SendAsync(new ArraySegment<byte>(messageToSend), WebSocketMessageType.Binary, true, CancellationToken.None);
-                Console.WriteLine($"Sent audio to client {client.Id}, length: {messageToSend.Length} bytes");            }
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine(Constants.ErrorSendingAudioToClient,client.Id,ex.Message);
+            Console.WriteLine($"Error sending audio to client {client.Id}: {ex.Message}");
         }
     }
+
     private byte[] AdjustVolume(byte[] audioData, int volume)
     {
         byte[] adjustedData = new byte[audioData.Length];

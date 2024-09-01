@@ -5,7 +5,10 @@ using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
 using server.Classes.WebSocket;
 using server.Const;
-
+using server.ClientHandler.ClientDatabase;
+using server.ClientHandler.ChannelDatabase;
+using server.ClientHandler.VolumeDatabase;
+using server.ClientHandler.FrequencyDatabase;
 
 var mongoClient = new MongoClient(Constants.MongoConnectionString);
 var database = mongoClient.GetDatabase(Constants.DatabaseName);
@@ -15,6 +18,11 @@ var clientSettingsService = new ClientSettingsService(database);
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
+
+var accountService = new AccountService(database);
+var channelService = new ChannelService(database);
+var volumeService = new VolumeService(database);
+var frequencyService = new FrequencyService(database);
 
 var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
 var webSocketServerTask = webSocketServer.StartAsync();
@@ -27,7 +35,9 @@ httpListener.Start();
 Console.WriteLine(Constants.StartedConnection);
 Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5000");
 
-var httpRequestHandler = new HttpRequestHandler(clientManager, clientSettingsService);
+var httpRequestHandler = new HttpRequestHandler(clientManager, clientSettingsService, 
+    accountService, channelService, 
+    volumeService, frequencyService);
 
 // Handle HTTP requests
 _ = Task.Run(async () =>

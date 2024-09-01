@@ -5,8 +5,13 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using System.Text.Json;
 using server.Classes.ClientHandler;
 using server.Interface;
+using server.ClientHandler.ClientDatabase;
+using server.ClientHandler.ChannelDatabase;
+using server.ClientHandler.VolumeDatabase;
+using server.ClientHandler.FrequencyDatabase;
 
 namespace server.Classes.ClientHandler
 {
@@ -14,11 +19,21 @@ namespace server.Classes.ClientHandler
     {
         private readonly IClientManager _clientManager;
         private readonly ClientSettingsService _clientSettingsService;
+        private readonly AccountService _accountService;
+        private readonly ChannelService _channelService;
+        private readonly VolumeService _volumeService;
+        private readonly FrequencyService _frequencyService;
 
-        public HttpRequestHandler(IClientManager clientManager, ClientSettingsService clientSettingsService)
+        public HttpRequestHandler(IClientManager clientManager, ClientSettingsService clientSettingsService, 
+                                  AccountService accountService, ChannelService channelService, 
+                                  VolumeService volumeService, FrequencyService frequencyService)
         {
             _clientManager = clientManager;
             _clientSettingsService = clientSettingsService;
+            _accountService = accountService;
+            _channelService = channelService;
+            _volumeService = volumeService;
+            _frequencyService = frequencyService;
         }
 
         public async Task HandleRequestAsync(HttpListenerContext context)
@@ -36,7 +51,15 @@ namespace server.Classes.ClientHandler
                     return;
                 }
 
-                if (request.Url.AbsolutePath.StartsWith("/api/client/"))
+                if (request.Url.AbsolutePath.StartsWith("/api/register") && request.HttpMethod == "POST")
+                {
+                    await HandleRegistrationRequest(request, response);
+                }
+                else if (request.Url.AbsolutePath == "/api/login" && request.HttpMethod == "POST")
+                {
+                    await HandleLoginRequest(request, response);
+                }
+                else if (request.Url.AbsolutePath.StartsWith("/api/client/"))
                 {
                     switch (request.HttpMethod)
                     {
@@ -66,11 +89,101 @@ namespace server.Classes.ClientHandler
                 response.Close();
             }
         }
+        
+
+        private async Task HandleLoginRequest(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+            var body = await reader.ReadToEndAsync();
+            Console.WriteLine($"Received login request body: {body}");
+
+            var clientModel = JsonSerializer.Deserialize<ClientModel>(body);
+
+            if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || string.IsNullOrEmpty(clientModel.Password))
+            {
+                response.StatusCode = 400; // Bad Request
+                await SendJsonResponse(response, new { message = "Invalid login data" });
+                return;
+            }
+
+            var isValid = await _accountService.ValidateCredentials(clientModel.ClientID, clientModel.Password);
+            if (isValid)
+            {
+                var account = await _accountService.GetAccount(clientModel.ClientID);
+                var channelInfo = await _channelService.GetChannelInfo(clientModel.ClientID);
+                var volume = await _volumeService.GetLastVolume(clientModel.ClientID);
+                var frequencyRange = await _frequencyService.GetFrequencyRange(account.Type);
+
+                var responseData = new
+                {
+                    message = "Login successful",
+                    clientId = account.ClientID,
+                    type = account.Type,
+                    channel = channelInfo?.Channel ?? 1,
+                    frequency = channelInfo?.Frequency ?? 30.0000,
+                    volume = volume,
+                    minFrequency = frequencyRange?.MinFrequency,
+                    maxFrequency = frequencyRange?.MaxFrequency
+                };
+
+                response.StatusCode = 200; // OK
+                await SendJsonResponse(response, responseData);
+            }
+            else
+            {
+                response.StatusCode = 401; // Unauthorized
+                await SendJsonResponse(response, new { message = "Invalid credentials" });
+            }
+        }
+
+        private async Task HandleRegistrationRequest(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+            var body = await reader.ReadToEndAsync();
+            var clientModel = JsonSerializer.Deserialize<ClientModel>(body);
+
+            if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || 
+                string.IsNullOrEmpty(clientModel.Password) || !Enum.IsDefined(typeof(ClientType), clientModel.Type))
+            {
+                response.StatusCode = 400; // Bad Request
+                await SendJsonResponse(response, new { message = "Invalid registration data" });
+                return;
+            }
+
+            var existingAccount = await _accountService.GetAccount(clientModel.ClientID);
+            if (existingAccount != null)
+            {
+                response.StatusCode = 409; // Conflict
+                await SendJsonResponse(response, new { message = "Client ID already exists" });
+                return;
+            }
+
+            // Create account
+            await _accountService.CreateAccount(clientModel);
+
+            // Get frequency range for client type
+            var frequencyRange = await _frequencyService.GetFrequencyRange(clientModel.Type);
+            if (frequencyRange == null)
+            {
+                response.StatusCode = 400; // Bad Request
+                await SendJsonResponse(response, new { message = "Invalid client type" });
+                return;
+            }
+
+            // Create default channel info
+            await _channelService.UpdateChannelInfo(clientModel.ClientID, 1, frequencyRange.MinFrequency);
+
+            // Create default volume
+            await _volumeService.UpdateVolume(clientModel.ClientID, 50);
+
+            response.StatusCode = 201; // Created
+            await SendJsonResponse(response, new { message = "Registration successful" });
+        }
 
         private void AddCorsHeaders(HttpListenerResponse response)
         {
             response.AddHeader("Access-Control-Allow-Origin", "*");
-            response.AddHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
+            response.AddHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
             response.AddHeader("Access-Control-Allow-Headers", "Content-Type");
             response.AddHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
             response.AddHeader("Cache-Control", "post-check=0, pre-check=0");
@@ -143,15 +256,25 @@ namespace server.Classes.ClientHandler
             if (pathParts.Length == 4 && pathParts[3] == "settings")
             {
                 var clientId = pathParts[2];
-                var settings = await _clientSettingsService.GetSettingsAsync(clientId);
+                var account = await _accountService.GetAccount(clientId);
+                var channelInfo = await _channelService.GetChannelInfo(clientId);
+                var volume = await _volumeService.GetLastVolume(clientId);
+                var frequencyRange = await _frequencyService.GetFrequencyRange(account.Type);
 
-                if (settings != null)
+                if (account != null && channelInfo != null && frequencyRange != null)
                 {
-                    var responseString = $"{{\"frequency\":{settings.Frequency},\"volume\":{settings.Volume}}}";
-                    var buffer = Encoding.UTF8.GetBytes(responseString);
-                    response.ContentLength64 = buffer.Length;
-                    response.ContentType = "application/json";
-                    await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                    var responseData = new
+                    {
+                        clientId = account.ClientID,
+                        type = account.Type,
+                        channel = channelInfo.Channel,
+                        frequency = channelInfo.Frequency,
+                        volume = volume,
+                        minFrequency = frequencyRange.MinFrequency,
+                        maxFrequency = frequencyRange.MaxFrequency
+                    };
+
+                    await SendJsonResponse(response, responseData);
                 }
                 else
                 {
@@ -162,6 +285,15 @@ namespace server.Classes.ClientHandler
             {
                 response.StatusCode = 400; // Bad Request
             }
+        }
+
+        private async Task SendJsonResponse(HttpListenerResponse response, object data)
+        {
+            var json = JsonSerializer.Serialize(data);
+            var buffer = Encoding.UTF8.GetBytes(json);
+            response.ContentType = "application/json";
+            response.ContentLength64 = buffer.Length;
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
         }
     }
 }

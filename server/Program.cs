@@ -25,7 +25,7 @@ var channelService = new ChannelService(database);
 var volumeService = new VolumeService(database);
 var frequencyService = new FrequencyService(database);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio,database);
 var serverOptions = new ServerOptions(clientManager, webSocketServer);
 
 // Start HTTP listener

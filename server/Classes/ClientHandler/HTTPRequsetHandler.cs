@@ -153,6 +153,14 @@ namespace server.Classes.ClientHandler
                 client.Frequency = frequency;
                 await _channelService.UpdateChannelInfo(clientId, 1, frequency); // Assuming channel 1 for simplicity
             }
+            if (settings["channel"] != null)
+            {
+                var channel = double.Parse(settings["channel"]);
+                client.Channel = (int)channel;
+                var frequency = double.Parse(settings["frequency"]);
+                client.Frequency = frequency;
+                await _channelService.UpdateChannelInfo(clientId, (int)channel, frequency); // Assuming channel 1 for simplicity
+            }
 
             if (settings["volume"] != null)
             {
@@ -274,98 +282,7 @@ namespace server.Classes.ClientHandler
             response.StatusCode = 200; // OK
         }
 
-        private async Task HandlePutRequest(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            var pathParts = request.Url.AbsolutePath.Trim('/').Split('/');
-
-            if (pathParts.Length == 4 && pathParts[3] == "settings")
-            {
-                var clientId = pathParts[2];
-                var client = _clientManager.GetAllClients().FirstOrDefault(c => c.Id == clientId);
-                if (client == null)
-                {
-                    response.StatusCode = 404; // Not Found
-                    return;
-                }
-
-                try
-                {
-                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
-                    var body = await reader.ReadToEndAsync();
-                    var parsedBody = HttpUtility.ParseQueryString(body);
-
-                    UpdateClientSettings(client, parsedBody);
-
-                    await _clientSettingsService.UpdateSettingsAsync(clientId, client.Frequency, client.Volume);
-                    response.StatusCode = 200; // OK
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"Error in PUT request handling: {e.Message}");
-                    response.StatusCode = 500; // Internal Server Error
-                }
-            }
-            else
-            {
-                response.StatusCode = 400; // Bad Request
-            }
-        }
-
-        private void UpdateClientSettings(Client client, System.Collections.Specialized.NameValueCollection parsedBody)
-        {
-            if (double.TryParse(parsedBody["frequency"], out var frequency))
-            {
-                client.Frequency = frequency;
-            }
-
-            if (int.TryParse(parsedBody["volume"], out var volume))
-            {
-                client.Volume = volume;
-            }
-
-            if (bool.TryParse(parsedBody["onoff"], out var onoff))
-            {
-                client.OnOff = onoff;
-            }
-        }
-
-        private async Task HandleGetRequest(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            var pathParts = request.Url.AbsolutePath.Split('/');
-            if (pathParts.Length == 4 && pathParts[3] == "settings")
-            {
-                var clientId = pathParts[2];
-                var account = await _accountService.GetAccount(clientId);
-                var channelInfo = await _channelService.GetChannelInfo(clientId);
-                var volume = await _volumeService.GetLastVolume(clientId);
-                var frequencyRange = await _frequencyService.GetFrequencyRange(account.Type);
-
-                if (account != null && channelInfo != null && frequencyRange != null)
-                {
-                    var responseData = new
-                    {
-                        clientId = account.ClientID,
-                        type = account.Type,
-                        channel = channelInfo.Channel,
-                        frequency = channelInfo.Frequency,
-                        volume = volume,
-                        minFrequency = frequencyRange.MinFrequency,
-                        maxFrequency = frequencyRange.MaxFrequency
-                    };
-
-                    await SendJsonResponse(response, responseData);
-                }
-                else
-                {
-                    response.StatusCode = 404; // Not Found
-                }
-            }
-            else
-            {
-                response.StatusCode = 400; // Bad Request
-            }
-        }
-
+ 
         private async Task SendJsonResponse(HttpListenerResponse response, object data)
         {
             var json = JsonSerializer.Serialize(data);

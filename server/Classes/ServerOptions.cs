@@ -30,6 +30,7 @@ public class ServerOptions
                     break;
                 default:
                     Console.WriteLine(Constants.UnrecognizedKeyMessage, key, Constants.QuitCommand, Constants.ListClientsCommand);
+                    
                     break;
             }
         }

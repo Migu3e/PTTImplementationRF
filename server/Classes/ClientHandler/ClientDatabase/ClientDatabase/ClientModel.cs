@@ -14,8 +14,8 @@ namespace server.ClientHandler.ClientDatabase
 
     public enum ClientType
     {
-        Navy = 1,
-        Land = 2,
+        Land = 1,
+        Navy = 2,
         Air = 3,
         Magav = 4
     }

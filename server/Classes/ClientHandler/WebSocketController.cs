@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MongoDB.Driver;
 using server.Classes.ClientHandler;
 using server.Interface;
 using server.Const;
@@ -13,11 +14,15 @@ namespace server.Classes.WebSocket
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
+        private readonly IMongoDatabase _database;
+
         
-        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio,IMongoDatabase database)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
+            _database = database;
+
         }
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
@@ -25,13 +30,13 @@ namespace server.Classes.WebSocket
             try
             {
                 // Wait for the client to send its ID
-                var buffer = new byte[1024 * 4];
+                var buffer = new byte[90024 * 4];
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 var clientId = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
 
                 Console.WriteLine($"Received client ID: {clientId}");
 
-                var client = new Client(clientId, webSocket);
+                var client = new Client(clientId, webSocket,_database);
                 _clientManager.AddClient(client);
 
                 await SendConnectionConfirmation(webSocket);
@@ -60,8 +65,9 @@ namespace server.Classes.WebSocket
 
         private async Task ProcessMessages(System.Net.WebSockets.WebSocket webSocket, Client client)
         {
-            var buffer = new byte[2024 * 16];  // Increased buffer size
+            var buffer = new byte[900024 * 16];  // Increased buffer size
             var cancelToken = new CancellationTokenSource();
+            var messageBuffer = new List<byte>();
 
             // Start a heartbeat task
 
@@ -79,8 +85,15 @@ namespace server.Classes.WebSocket
 
                     if (result.MessageType == WebSocketMessageType.Binary)
                     {
-                        await HandleBinaryMessage(client, buffer, result.Count);
-                    }
+                        messageBuffer.AddRange(buffer.Take(result.Count));
+
+                        // Check if the message is complete
+                        if (result.EndOfMessage)
+                        {
+                            // Process complete message
+                            await ProcessAudioMessage(messageBuffer.ToArray(),result.Count, client);
+                            messageBuffer.Clear();
+                        }                    }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
@@ -107,37 +120,43 @@ namespace server.Classes.WebSocket
             }
         }
 
-        private async Task HandleBinaryMessage(Client client, byte[] buffer, int count)
+        private async Task ProcessAudioMessage(byte[] buffer, int count, Client client)
         {
-            try
+            if (count < 8) 
             {
-                if (count >= 8 && buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
-                {
-                    // Full audio message
-                    int audioLength = BitConverter.ToInt32(buffer, 4);
-                    if (audioLength > 0 && audioLength <= buffer.Length - 8)
-                    {
-                        byte[] audioData = new byte[audioLength];
-                        Buffer.BlockCopy(buffer, 8, audioData, 0, audioLength);
-                        await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Invalid audio length: {audioLength}");
-                    }
-                }
-                else
-                {
-                    // Real-time audio chunk
-                    await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, new ArraySegment<byte>(buffer, 0, count).ToArray());
-                }
+                Console.WriteLine(Constants.ShortMessageError, count);
+                return;
             }
-            catch (Exception e)
+
+            if (buffer[0] == 0xAA && buffer[1] == 0xAA && buffer[2] == 0xAA && buffer[3] == 0xAA)
             {
-                Console.WriteLine($"Error handling binary message for client {client.Id}: {e.Message}");
+                int audioLength = count - 8;
+                byte[] audioData = new byte[audioLength];
+                Array.Copy(buffer, 8, audioData, 0, audioLength);
+
+                Console.WriteLine($"{client.Id} send on {client.Frequency}");
+                await _receiveAudio.HandleRealtimeAudioAsyncWebSockets(client, audioData);
+            }
+            else if (buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
+            {
+                int expectedLength = BitConverter.ToInt32(buffer, 4);
+                int actualLength = count - 8;
+
+                if (actualLength < expectedLength)
+                {
+                    Console.WriteLine("Received incomplete audio data");
+                }
+
+                byte[] audioData = new byte[expectedLength];
+                Array.Copy(buffer, 8, audioData, 0, expectedLength);
+
+                Console.WriteLine($"Received full audio: {expectedLength} bytes from client {client.Id}");
+
+                await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
             }
         }
+    }
 
         
-    }
+    
 }

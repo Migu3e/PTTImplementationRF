@@ -15,7 +15,6 @@ var mongoClient = new MongoClient(Constants.MongoConnectionString);
 var database = mongoClient.GetDatabase(Constants.DatabaseName);
 
 var clientManager = new ClientManager();
-var clientSettingsService = new ClientSettingsService(database);
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
@@ -36,7 +35,7 @@ httpListener.Start();
 Console.WriteLine(Constants.StartedConnection);
 Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5000");
 
-var httpRequestHandler = new HttpRequestHandler(clientManager, clientSettingsService, 
+var httpRequestHandler = new HttpRequestHandler(clientManager, 
     accountService, channelService, 
     volumeService, frequencyService);
 

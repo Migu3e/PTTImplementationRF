@@ -18,18 +18,16 @@ namespace server.Classes.ClientHandler
     public class HttpRequestHandler
     {
         private readonly IClientManager _clientManager;
-        private readonly ClientSettingsService _clientSettingsService;
         private readonly AccountService _accountService;
         private readonly ChannelService _channelService;
         private readonly VolumeService _volumeService;
         private readonly FrequencyService _frequencyService;
 
-        public HttpRequestHandler(IClientManager clientManager, ClientSettingsService clientSettingsService, 
+        public HttpRequestHandler(IClientManager clientManager, 
                                   AccountService accountService, ChannelService channelService, 
                                   VolumeService volumeService, FrequencyService frequencyService)
         {
             _clientManager = clientManager;
-            _clientSettingsService = clientSettingsService;
             _accountService = accountService;
             _channelService = channelService;
             _volumeService = volumeService;
@@ -245,10 +243,10 @@ namespace server.Classes.ClientHandler
                 return;
             }
 
-            // Create account
+            // new account
             await _accountService.CreateAccount(clientModel);
 
-            // Get frequency range for client type
+            //frequency range for client type
             var frequencyRange = await _frequencyService.GetFrequencyRange(clientModel.Type);
             if (frequencyRange == null)
             {
@@ -257,10 +255,10 @@ namespace server.Classes.ClientHandler
                 return;
             }
 
-            // Create default channel info
+            //default channel info
             await _channelService.UpdateChannelInfo(clientModel.ClientID, 1, frequencyRange.MinFrequency);
 
-            // Create default volume
+            //default volume
             await _volumeService.UpdateVolume(clientModel.ClientID, 50);
 
             response.StatusCode = 201; // Created

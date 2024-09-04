@@ -29,7 +29,7 @@ namespace server.Classes.WebSocket
         {
             try
             {
-                // Wait for the client to send its ID
+                // wait for the client to send its ID
                 var buffer = new byte[90024 * 4];
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 var clientId = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
@@ -87,18 +87,15 @@ namespace server.Classes.WebSocket
                     {
                         messageBuffer.AddRange(buffer.Take(result.Count));
 
-                        // Check if the message is complete
+                        // if the message is complete
                         if (result.EndOfMessage)
                         {
-                            // Process complete message
                             await ProcessAudioMessage(messageBuffer.ToArray(),result.Count, client);
                             messageBuffer.Clear();
                         }                    }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        Console.WriteLine($"Received text message from client {client.Id}: {message}");
-                        // Handle text messages if needed
                     }
                 }
             }
@@ -108,7 +105,6 @@ namespace server.Classes.WebSocket
             }
             catch (OperationCanceledException)
             {
-                // This is expected when the token is canceled
             }
             catch (Exception e)
             {

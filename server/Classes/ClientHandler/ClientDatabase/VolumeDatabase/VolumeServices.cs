@@ -21,7 +21,18 @@ namespace server.ClientHandler.VolumeDatabase
         public async Task UpdateVolume(string clientId, int volume)
         {
             var update = Builders<VolumeModel>.Update.Set(v => v.LastVolume, volume);
-            await _volumes.UpdateOneAsync(v => v.ClientID == clientId, update, new UpdateOptions { IsUpsert = true });
+            await _volumes.UpdateOneAsync(v => v.ClientID == clientId, update);
         }
+
+        public async Task AddVolume(string clientId, int volume)
+        {
+            var newVolume = new VolumeModel
+            {
+                ClientID = clientId,
+                LastVolume = volume
+            };
+            await _volumes.InsertOneAsync(newVolume);
+        }
+
     }
 }

@@ -22,7 +22,19 @@ namespace server.ClientHandler.ChannelDatabase
             var update = Builders<ChannelModel>.Update
                 .Set(c => c.Channel, channel)
                 .Set(c => c.Frequency, frequency);
-            await _channels.UpdateOneAsync(c => c.ClientID == clientId, update, new UpdateOptions { IsUpsert = true });
+            await _channels.UpdateOneAsync(c => c.ClientID == clientId, update);
         }
+
+        public async Task AddChannelInfo(string clientId, int channel, double frequency)
+        {
+            var newChannel = new ChannelModel
+            {
+                ClientID = clientId,
+                Channel = channel,
+                Frequency = frequency
+            };
+            await _channels.InsertOneAsync(newChannel);
+        }
+
     }
 }

@@ -202,7 +202,7 @@ namespace server.Classes.ClientHandler
                 var responseData = new
                 {
                     message = "Login successful",
-                    clientId = account.ClientID, // This is now the same as the login ID
+                    clientId = account.ClientID,
                     type = account.Type,
                     channel = channelInfo?.Channel ?? 1,
                     frequency = channelInfo?.Frequency ?? 30.0000,
@@ -256,10 +256,10 @@ namespace server.Classes.ClientHandler
             }
 
             //default channel info
-            await _channelService.UpdateChannelInfo(clientModel.ClientID, 1, frequencyRange.MinFrequency);
+            await _channelService.AddChannelInfo(clientModel.ClientID, 1, frequencyRange.MinFrequency);
 
             //default volume
-            await _volumeService.UpdateVolume(clientModel.ClientID, 50);
+            await _volumeService.AddVolume(clientModel.ClientID, 50);
 
             response.StatusCode = 201; // Created
             await SendJsonResponse(response, new { message = "Registration successful" });

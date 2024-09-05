@@ -27,7 +27,6 @@ var frequencyService = new FrequencyService(database);
 var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio,database);
 var serverOptions = new ServerOptions(clientManager, webSocketServer);
 
-// Start HTTP listener
 var httpListener = new HttpListener();
 httpListener.Prefixes.Add("http://localhost:5000/");
 httpListener.Start();
@@ -39,7 +38,6 @@ var httpRequestHandler = new HttpRequestHandler(clientManager,
     accountService, channelService, 
     volumeService, frequencyService);
 
-// Handle HTTP requests
 _ = Task.Run(async () =>
 {
     while (true)
@@ -49,10 +47,8 @@ _ = Task.Run(async () =>
     }
 });
 
-// Start WebSocket server
 var webSocketServerTask = webSocketServer.StartAsync();
 
-// Main program loop
 bool continueRunning = true;
 while (continueRunning)
 {
@@ -60,7 +56,6 @@ while (continueRunning)
     await Task.Delay(100); // Small delay to prevent CPU overuse
 }
 
-// Cleanup
 await webSocketServer.StopAsync();
 httpListener.Stop();
 Console.WriteLine(Constants.StoppedConnection);

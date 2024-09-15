@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MongoDB.Driver;
 using server.Classes.ClientHandler;
 using server.Interface;
 using server.Const;
@@ -13,83 +14,104 @@ namespace server.Classes.WebSocket
     {
         private readonly IClientManager _clientManager;
         private readonly IReceiveAudio _receiveAudio;
+        private readonly IMongoDatabase _database;
+
         
-        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio)
+        public WebSocketController(IClientManager clientManager, IReceiveAudio receiveAudio,IMongoDatabase database)
         {
             _clientManager = clientManager;
             _receiveAudio = receiveAudio;
+            _database = database;
+
         }
 
         public async Task HandleConnection(System.Net.WebSockets.WebSocket webSocket)
         {
             try
             {
-                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                var client = new Client(shortId, webSocket);
+                // wait for the client to send its ID
+                var buffer = new byte[90024 * 4];
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                var clientId = Encoding.UTF8.GetString(buffer, 0, result.Count).Trim();
+
+                Console.WriteLine($"Received client ID: {clientId}");
+
+                var client = new Client(clientId, webSocket,_database);
                 _clientManager.AddClient(client);
 
-                await SendClientId(webSocket, client.Id);
+                await SendConnectionConfirmation(webSocket);
 
                 await ProcessMessages(webSocket, client);
-
-                _clientManager.RemoveClient(client.Id);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                Console.WriteLine($"Error in HandleConnection: {e.Message}");
             }
-
+            finally
+            {
+                if (_clientManager.GetAllClients().Any(c => c.WebSocket == webSocket))
+                {
+                    _clientManager.RemoveClient(_clientManager.GetAllClients().First(c => c.WebSocket == webSocket).Id);
+                }
+            }
         }
 
-        private async Task SendClientId(System.Net.WebSockets.WebSocket webSocket, string clientId)
+        private async Task SendConnectionConfirmation(System.Net.WebSockets.WebSocket webSocket)
         {
-            var bytes = Encoding.UTF8.GetBytes(clientId);
+            var confirmationMessage = "Connected";
+            var bytes = Encoding.UTF8.GetBytes(confirmationMessage);
             await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
         private async Task ProcessMessages(System.Net.WebSockets.WebSocket webSocket, Client client)
         {
-            var buffer = new byte[8192];
+            var buffer = new byte[900024 * 16]; 
+            var cancelToken = new CancellationTokenSource();
             var messageBuffer = new List<byte>();
-    
-            while (webSocket.State == WebSocketState.Open)
-            {
-                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Binary)
-                {
-                    messageBuffer.AddRange(buffer.Take(result.Count));
-            
-                    if (result.EndOfMessage)
-                    {
-                        await ProcessAudioMessage(messageBuffer.ToArray(), messageBuffer.Count, client);
-                        messageBuffer.Clear();
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    var message = Encoding.UTF8.GetString(buffer.Take(result.Count).ToArray());
 
-                    if (message.StartsWith("ONF|"))
+
+            try
+            {
+                while (webSocket.State == WebSocketState.Open)
+                {
+                    var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancelToken.Token);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        string clientNewSettings = message.Substring(4);
-                        Console.WriteLine($"{client.Id} sent option: {clientNewSettings}");
-                        if (clientNewSettings == "ON")
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        break;
+                    }
+
+                    if (result.MessageType == WebSocketMessageType.Binary)
+                    {
+                        messageBuffer.AddRange(buffer.Take(result.Count));
+
+                        // if the message is complete
+                        if (result.EndOfMessage)
                         {
-                            client.OnOff = true;
-                        }
-                        else
-                        {
-                            client.OnOff = false;
-                        }
+                            await ProcessAudioMessage(messageBuffer.ToArray(),result.Count, client);
+                            messageBuffer.Clear();
+                        }                    }
+                    else if (result.MessageType == WebSocketMessageType.Text)
+                    {
+                        var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     }
                 }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by the client", CancellationToken.None);
-                    Console.WriteLine(Constants.WebSocketConnectionClosed);
-                    break;
-                }
+            }
+            catch (WebSocketException e)
+            {
+                Console.WriteLine($"WebSocket error for client {client.Id}: {e.Message}");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error processing messages for client {client.Id}: {e.Message}");
+            }
+            finally
+            {
+                cancelToken.Cancel();
             }
         }
 
@@ -112,22 +134,24 @@ namespace server.Classes.WebSocket
             }
             else if (buffer[0] == 0xFF && buffer[1] == 0xFF && buffer[2] == 0xFF && buffer[3] == 0xFF)
             {
-                int audioLength = BitConverter.ToInt32(buffer, 4);
-                if (count < 8 + audioLength)
+                int expectedLength = BitConverter.ToInt32(buffer, 4);
+                int actualLength = count - 8;
+
+                if (actualLength < expectedLength)
                 {
-                    Console.WriteLine(Constants.IncompleteFullAudioMessage, 8 + audioLength, count);
-                    return;
+                    Console.WriteLine("Received incomplete audio data");
                 }
 
-                byte[] audioData = new byte[audioLength];
-                Array.Copy(buffer, 8, audioData, 0, audioLength);
+                byte[] audioData = new byte[expectedLength];
+                Array.Copy(buffer, 8, audioData, 0, expectedLength);
 
-                Console.WriteLine(Constants.ReceivedFullAudioInfo, audioLength);
+                Console.WriteLine($"Received full audio: {expectedLength} bytes from client {client.Id}");
 
                 await _receiveAudio.HandleFullAudioTransmissionAsyncWebSockets(client, audioData);
             }
         }
-        
-
     }
+
+        
+    
 }

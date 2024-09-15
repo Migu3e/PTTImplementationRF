@@ -5,21 +5,28 @@ using server.Classes.AudioHandler;
 using server.Classes.ClientHandler;
 using server.Classes.WebSocket;
 using server.Const;
-
+using server.ClientHandler.ClientDatabase;
+using server.ClientHandler.ChannelDatabase;
+using server.ClientHandler.VolumeDatabase;
+using server.ClientHandler.FrequencyDatabase;
+using server.Classes;
 
 var mongoClient = new MongoClient(Constants.MongoConnectionString);
 var database = mongoClient.GetDatabase(Constants.DatabaseName);
 
 var clientManager = new ClientManager();
-var clientSettingsService = new ClientSettingsService(database);
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio);
-var webSocketServerTask = webSocketServer.StartAsync();
+var accountService = new AccountService(database);
+var channelService = new ChannelService(database);
+var volumeService = new VolumeService(database);
+var frequencyService = new FrequencyService(database);
 
-// Start HTTP listener
+var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, transmitAudio, receiveAudio,database);
+var serverOptions = new ServerOptions(clientManager, webSocketServer);
+
 var httpListener = new HttpListener();
 httpListener.Prefixes.Add("http://localhost:5000/");
 httpListener.Start();
@@ -27,9 +34,10 @@ httpListener.Start();
 Console.WriteLine(Constants.StartedConnection);
 Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5000");
 
-var httpRequestHandler = new HttpRequestHandler(clientManager, clientSettingsService);
+var httpRequestHandler = new HttpRequestHandler(clientManager, 
+    accountService, channelService, 
+    volumeService, frequencyService);
 
-// Handle HTTP requests
 _ = Task.Run(async () =>
 {
     while (true)
@@ -39,4 +47,15 @@ _ = Task.Run(async () =>
     }
 });
 
-await webSocketServerTask;
+var webSocketServerTask = webSocketServer.StartAsync();
+
+bool continueRunning = true;
+while (continueRunning)
+{
+    continueRunning = await serverOptions.HandleInput();
+    await Task.Delay(100); // Small delay to prevent CPU overuse
+}
+
+await webSocketServer.StopAsync();
+httpListener.Stop();
+Console.WriteLine(Constants.StoppedConnection);

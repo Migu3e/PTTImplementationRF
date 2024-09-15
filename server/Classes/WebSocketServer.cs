@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+using MongoDB.Driver;
 using server.Classes.AudioHandler;
 using server.Const;
 using server.Interface;
@@ -16,8 +17,10 @@ namespace server.Classes.WebSocket
         private readonly ITransmitAudio _transmitAudio;
         private readonly IReceiveAudio _receiveAudio;
         private bool _isRunning;
+        private readonly IMongoDatabase _database;
 
-        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio)
+
+        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio, IMongoDatabase database)
         {
             _url = $"http://*:{port}/";
             _listener = new HttpListener();
@@ -25,6 +28,7 @@ namespace server.Classes.WebSocket
             _clientManager = clientManager;
             _transmitAudio = transmitAudio;
             _receiveAudio = receiveAudio;
+            _database = database;
         }
 
         public async Task StartAsync()
@@ -56,7 +60,7 @@ namespace server.Classes.WebSocket
                 webSocketContext = await context.AcceptWebSocketAsync(null);
                 var webSocket = webSocketContext.WebSocket;
 
-                var controller = new WebSocketController(_clientManager, _receiveAudio);
+                var controller = new WebSocketController(_clientManager, _receiveAudio,_database);
                 await controller.HandleConnection(webSocket);
             }
             catch (Exception ex)

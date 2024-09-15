@@ -22,7 +22,7 @@ public class ReceiveAudio : IReceiveAudio
     
     public async Task HandleFullAudioTransmissionAsyncWebSockets(Client client, byte[] audioData)
     {
-        string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.wav";
+        string filename = $"full_audio_{DateTime.UtcNow:yyyyMMddHHmmss}_{client.Id}.webm";
         await _gridFsManager.SaveAudioAsync(filename, audioData);
 
         Console.WriteLine(Constants.ReceivedFullAudioMessage, audioData.Length, client.Id);

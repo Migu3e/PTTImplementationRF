@@ -1,4 +1,5 @@
 using System.Net.WebSockets;
+using server.ClientHandler.ClientDatabase;
 using server.Interface;
 using server.Const;
 
@@ -7,6 +8,7 @@ namespace server.Classes.ClientHandler
     public class ClientManager : IClientManager
     {
         private readonly IEnumerable<Client> clients = new List<Client>();
+        
 
         public void AddClient(Client client)
         {
@@ -37,6 +39,7 @@ namespace server.Classes.ClientHandler
             foreach (var client in clients)
             {
                 Console.WriteLine(Constants.ClientInfoMessage, client.Id,client.OnOff, client.Frequency);
+                Console.WriteLine($"client fq range {client.MinFrequency} - {client.MaxFrequency}\nclient type {client.Type} and channel {client.Channel}");
             }
         }
     }

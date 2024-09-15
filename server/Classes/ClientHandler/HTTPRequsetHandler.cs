@@ -217,7 +217,7 @@ namespace server.Classes.ClientHandler
             else
             {
                 response.StatusCode = 401; // Unauthorized
-                await SendJsonResponse(response, new { message = "Invalid credentials" });
+                await SendJsonResponse(response, new { message = "password or username are incorrect" });
             }
         }
 
@@ -231,7 +231,7 @@ namespace server.Classes.ClientHandler
                 string.IsNullOrEmpty(clientModel.Password) || !Enum.IsDefined(typeof(ClientType), clientModel.Type))
             {
                 response.StatusCode = 400; // Bad Request
-                await SendJsonResponse(response, new { message = "Invalid registration data" });
+                await SendJsonResponse(response, new { message = "error in the registration data" });
                 return;
             }
 
@@ -239,7 +239,7 @@ namespace server.Classes.ClientHandler
             if (existingAccount != null)
             {
                 response.StatusCode = 409; // Conflict
-                await SendJsonResponse(response, new { message = "Client ID already exists" });
+                await SendJsonResponse(response, new { message = "Personal Number already in the system" });
                 return;
             }
 

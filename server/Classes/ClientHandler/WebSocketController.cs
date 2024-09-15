@@ -65,11 +65,10 @@ namespace server.Classes.WebSocket
 
         private async Task ProcessMessages(System.Net.WebSockets.WebSocket webSocket, Client client)
         {
-            var buffer = new byte[900024 * 16];  // Increased buffer size
+            var buffer = new byte[900024 * 16]; 
             var cancelToken = new CancellationTokenSource();
             var messageBuffer = new List<byte>();
 
-            // Start a heartbeat task
 
             try
             {

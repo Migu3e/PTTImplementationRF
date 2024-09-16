@@ -14,19 +14,17 @@ namespace server.Classes.WebSocket
         private readonly HttpListener _listener;
         private readonly string _url;
         private readonly IClientManager _clientManager;
-        private readonly ITransmitAudio _transmitAudio;
         private readonly IReceiveAudio _receiveAudio;
         private bool _isRunning;
         private readonly IMongoDatabase _database;
 
 
-        public WebSocketServer(int port, IClientManager clientManager, ITransmitAudio transmitAudio, IReceiveAudio receiveAudio, IMongoDatabase database)
+        public WebSocketServer(int port, IClientManager clientManager, IReceiveAudio receiveAudio, IMongoDatabase database)
         {
             _url = $"http://*:{port}/";
             _listener = new HttpListener();
             _listener.Prefixes.Add(_url);
             _clientManager = clientManager;
-            _transmitAudio = transmitAudio;
             _receiveAudio = receiveAudio;
             _database = database;
         }

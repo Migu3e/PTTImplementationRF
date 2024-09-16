@@ -26,7 +26,7 @@ public class GridFsManager : IGridFsManager
             using (var stream = new MemoryStream(audioData))
             {
                 ObjectId fileId = await gridFSBucket.UploadFromStreamAsync(filename, stream);
-                Console.WriteLine($"Audio file saved to MongoDB: {filename}, File ID: {fileId}");
+                Console.WriteLine(Constants.SavedFullAudio,filename,fileId);
             }
 
             // Save to local file system
@@ -35,7 +35,7 @@ public class GridFsManager : IGridFsManager
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving audio file: {ex.Message}");
+            Console.WriteLine(Constants.ErrorSavingFullAudio);
             throw;
         }
     }

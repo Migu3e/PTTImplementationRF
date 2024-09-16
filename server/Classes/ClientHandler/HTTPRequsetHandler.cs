@@ -12,6 +12,7 @@ using server.ClientHandler.ClientDatabase;
 using server.ClientHandler.ChannelDatabase;
 using server.ClientHandler.VolumeDatabase;
 using server.ClientHandler.FrequencyDatabase;
+using server.Const;
 
 namespace server.Classes.ClientHandler
 {
@@ -32,6 +33,7 @@ namespace server.Classes.ClientHandler
             _channelService = channelService;
             _volumeService = volumeService;
             _frequencyService = frequencyService;
+
         }
 
        
@@ -49,6 +51,7 @@ namespace server.Classes.ClientHandler
                     HandleOptionsRequest(response);
                     return;
                 }
+
 
                 if (request.Url.AbsolutePath.StartsWith("/api/register") && request.HttpMethod == "POST")
                 {
@@ -141,53 +144,87 @@ namespace server.Classes.ClientHandler
             if (client == null)
             {
                 response.StatusCode = 404; // Not Found
-                await SendJsonResponse(response, new { message = "Client not found" });
+                await SendJsonResponse(response, new { message = Constants.ClientNotFound });
                 return;
             }
 
             if (settings["frequency"] != null)
             {
-                var frequency = double.Parse(settings["frequency"]);
-                client.Frequency = frequency;
-                await _channelService.UpdateChannelInfo(clientId, 1, frequency); // Assuming channel 1 for simplicity
+                try
+                {
+                    var frequency = double.Parse(settings["frequency"]);
+                    client.Frequency = frequency;
+                    await _channelService.UpdateChannelInfo(clientId, 1, frequency);
+                }
+                catch (Exception  ex)
+                {
+                    Console.WriteLine(Constants.ErrorInFrequency + $": {ex}");
+                    throw;
+                }
             }
             if (settings["channel"] != null)
             {
-                var channel = double.Parse(settings["channel"]);
-                client.Channel = (int)channel;
-                var frequency = double.Parse(settings["frequency"]);
-                client.Frequency = frequency;
-                await _channelService.UpdateChannelInfo(clientId, (int)channel, frequency); // Assuming channel 1 for simplicity
+                try
+                {
+                    var channel = double.Parse(settings["channel"]);
+                    client.Channel = (int)channel;
+                    var frequency = double.Parse(settings["frequency"]);
+                    client.Frequency = frequency;
+                    await _channelService.UpdateChannelInfo(clientId, (int)channel, frequency);
+                }
+                catch (Exception  ex)
+                {
+                    Console.WriteLine(Constants.ErrorInFrequency + $": {ex}");
+                    throw;
+                }
+                
             }
 
             if (settings["volume"] != null)
             {
-                var volume = int.Parse(settings["volume"]);
-                client.Volume = volume;
-                await _volumeService.UpdateVolume(clientId, volume);
+
+                try
+                {
+                    var volume = int.Parse(settings["volume"]);
+                    client.Volume = volume;
+                    await _volumeService.UpdateVolume(clientId, volume);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(Constants.ErrorInVolume + $": {ex}");
+                    throw;
+                }
             }
 
             if (settings["onoff"] != null)
             {
-                var onOff = bool.Parse(settings["onoff"]);
-                client.OnOff = onOff;
+                try
+                {
+                    var onOff = bool.Parse(settings["onoff"]);
+                    client.OnOff = onOff;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(Constants.ErrorInOnOff + $" {ex}");
+                    throw;
+                }
             }
 
             response.StatusCode = 200; // OK
-            await SendJsonResponse(response, new { message = "Settings updated successfully" });
+            await SendJsonResponse(response, new { message = Constants.SettingsUpdated });
         }
         private async Task HandleLoginRequest(HttpListenerRequest request, HttpListenerResponse response)
         {
             using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
             var body = await reader.ReadToEndAsync();
-            Console.WriteLine($"Received login request body: {body}");
+            Console.WriteLine(Constants.RecivedLoginBody, body);
 
             var clientModel = JsonSerializer.Deserialize<ClientModel>(body);
 
             if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || string.IsNullOrEmpty(clientModel.Password))
             {
                 response.StatusCode = 400; // Bad Request
-                await SendJsonResponse(response, new { message = "Invalid login data" });
+                await SendJsonResponse(response, new { message = Constants.InvalidLogin });
                 return;
             }
 
@@ -217,7 +254,7 @@ namespace server.Classes.ClientHandler
             else
             {
                 response.StatusCode = 401; // Unauthorized
-                await SendJsonResponse(response, new { message = "password or username are incorrect" });
+                await SendJsonResponse(response, new { message = Constants.PassUserIncorrect});
             }
         }
 
@@ -225,13 +262,15 @@ namespace server.Classes.ClientHandler
         {
             using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
             var body = await reader.ReadToEndAsync();
+            Console.WriteLine(Constants.RecivedRegisterBody, body);
+
             var clientModel = JsonSerializer.Deserialize<ClientModel>(body);
 
             if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || 
                 string.IsNullOrEmpty(clientModel.Password) || !Enum.IsDefined(typeof(ClientType), clientModel.Type))
             {
                 response.StatusCode = 400; // Bad Request
-                await SendJsonResponse(response, new { message = "error in the registration data" });
+                await SendJsonResponse(response, new { message = Constants.ErrorRegister });
                 return;
             }
 
@@ -239,7 +278,7 @@ namespace server.Classes.ClientHandler
             if (existingAccount != null)
             {
                 response.StatusCode = 409; // Conflict
-                await SendJsonResponse(response, new { message = "Personal Number already in the system" });
+                await SendJsonResponse(response, new { message = Constants.PersonalNumExist });
                 return;
             }
 
@@ -251,7 +290,7 @@ namespace server.Classes.ClientHandler
             if (frequencyRange == null)
             {
                 response.StatusCode = 400; // Bad Request
-                await SendJsonResponse(response, new { message = "Invalid client type" });
+                await SendJsonResponse(response, new { message = Constants.ClientTypeErr });
                 return;
             }
 
@@ -262,9 +301,9 @@ namespace server.Classes.ClientHandler
             await _volumeService.AddVolume(clientModel.ClientID, 50);
 
             response.StatusCode = 201; // Created
-            await SendJsonResponse(response, new { message = "Registration successful" });
+            await SendJsonResponse(response, new { message = Constants.RegisterSuccess });
         }
-
+ 
         private void AddCorsHeaders(HttpListenerResponse response)
         {
             response.AddHeader("Access-Control-Allow-Origin", "*");
@@ -289,8 +328,6 @@ namespace server.Classes.ClientHandler
             response.ContentLength64 = buffer.Length;
             await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
         }
-
-
-
+        
     }
 }

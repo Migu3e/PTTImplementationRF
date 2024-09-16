@@ -18,32 +18,31 @@ public static class Constants
     public const string ConnectedClientsListMessage = "Connected WebSocket clients ({0}):";
     public const string ClientInfoMessage = "- ID: {0}, Status: {1}, Frequency: {2}";
     public const string ClientDisconnectReason = "Client disconnected";
-    public const string ServerAccessible = "Server is accessible at:";
     
     //websocketcontroller
     //some will be deleted when debug is not needed
-    public const string WebSocketConnectionClosed = "WebSocket connection closed.";
-    public const string ReceivedMessageInfo = "Received message: Type={0}, Count={1}, EndOfMessage={2}";
     public const string ShortMessageError = "Received message is too short: {0} bytes";
-    public const string IncompleteFullAudioMessage = "Full audio message is incomplete: expected {0} bytes, got {1} bytes";
-    public const string ReceivedFullAudioInfo = "Received full audio: {0} bytes";
-    public const string ErrorInFrequency = "Error when getting Frequency.";
+    public const string ErrorInFrequency = "Error when getting Frequency or Channel.";
     public const string ErrorInVolume = "Error when getting Volume.";
     public const string ErrorInOnOff = "Error when getting On or Off settings.";
-    public const string ReceivedOptionOnOff = "client {0} is now {1}";
-    public const string ReceivedOptionFrequency = "client {0} is now on frequency to: {1}";
-    public const string ReceivedOptionVolume = "client {0} has changed volume to: {1}";
     
-    
-    //transmitaudio
-    public const string ErrorSendingAudioToClient = "Error sending audio to client: {0}, {1}";
-
-
-
-
-
+    //gridfs
+    public const string SavedFullAudio = "Audio file saved to MongoDB: {0}, File ID: {1}";
+    public const string ErrorSavingFullAudio = "error saving full audio";
 
     
+    //HTTPreqHandler
+    public const string RecivedLoginBody = "Recived Login Body: {0}";
+    public const string RecivedRegisterBody = "Recived Register Body: {0}";
+    public const string ClientNotFound = "Client Not Found";
+    public const string SettingsUpdated = "Settings Updated Successfully";
+    public const string InvalidLogin = "Invalid Login Data";
+    public const string PassUserIncorrect = "Password or Username Are Incorrect";
+    public const string ErrorRegister = "Error In The Registration";
+    public const string PersonalNumExist = "Personal Number Already In Exist";
+    public const string ClientTypeErr = "Invalid Client Type";
+    public const string RegisterSuccess = "Registration Success";
+
     //program
     public const string StartedConnection = "WebSocket Server started. Press 'Q' to quit or 'L' to list connected clients.";
     public const string StoppedConnection = "WebSocket Server stopped";

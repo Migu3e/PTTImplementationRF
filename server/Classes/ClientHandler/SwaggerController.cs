@@ -3,7 +3,6 @@ using server.ClientHandler.ClientDatabase;
 using server.ClientHandler.ChannelDatabase;
 using server.ClientHandler.VolumeDatabase;
 using server.ClientHandler.FrequencyDatabase;
-using System.Threading.Tasks;
 
 namespace server.Controllers
 {

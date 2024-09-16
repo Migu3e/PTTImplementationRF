@@ -1,8 +1,5 @@
-using System;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using MongoDB.Driver;
 using server.Classes.ClientHandler;
 using server.Interface;

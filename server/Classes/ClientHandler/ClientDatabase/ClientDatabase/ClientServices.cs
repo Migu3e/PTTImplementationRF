@@ -1,5 +1,4 @@
 using MongoDB.Driver;
-using server.ClientHandler.ClientDatabase;
 
 namespace server.ClientHandler.ClientDatabase
 {

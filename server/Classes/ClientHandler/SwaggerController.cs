@@ -34,13 +34,13 @@ namespace server.Controllers
             if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || 
                 string.IsNullOrEmpty(clientModel.Password) || !System.Enum.IsDefined(typeof(ClientType), clientModel.Type))
             {
-                return BadRequest(new { message = "Error in the registration data" });
+                return BadRequest(new { message = "error in the registration" });
             }
 
             var existingAccount = await _accountService.GetAccount(clientModel.ClientID);
             if (existingAccount != null)
             {
-                return Conflict(new { message = "Personal Number already in the system" });
+                return Conflict(new { message = "personal Number already in the system" });
             }
 
             await _accountService.CreateAccount(clientModel);
@@ -48,7 +48,7 @@ namespace server.Controllers
             var frequencyRange = await _frequencyService.GetFrequencyRange(clientModel.Type);
             if (frequencyRange == null)
             {
-                return BadRequest(new { message = "Invalid client type" });
+                return BadRequest(new { message = "client type problem" });
             }
 
             await _channelService.AddChannelInfo(clientModel.ClientID, 1, frequencyRange.MinFrequency);
@@ -62,7 +62,7 @@ namespace server.Controllers
         {
             if (clientModel == null || string.IsNullOrEmpty(clientModel.ClientID) || string.IsNullOrEmpty(clientModel.Password))
             {
-                return BadRequest(new { message = "Invalid login data" });
+                return BadRequest(new { message = "problem login" });
             }
 
             var isValid = await _accountService.ValidateCredentials(clientModel.ClientID, clientModel.Password);
@@ -89,7 +89,7 @@ namespace server.Controllers
             }
             else
             {
-                return Unauthorized(new { message = "Password or username are incorrect" });
+                return Unauthorized(new { message = "passworrd or username are incorrect" });
             }
         }
     }

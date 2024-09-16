@@ -11,12 +11,12 @@ using server.ClientHandler.VolumeDatabase;
 using server.ClientHandler.FrequencyDatabase;
 using server.Classes;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -24,39 +24,31 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PTT Audio API", Version = "v1" });
 });
 
-builder.Services.AddSingleton<AccountService>();
-builder.Services.AddSingleton<ChannelService>();
-builder.Services.AddSingleton<VolumeService>();
-builder.Services.AddSingleton<FrequencyService>();
-
-var mongoClient = new MongoClient(Constants.MongoConnectionString);
-var database = mongoClient.GetDatabase(Constants.DatabaseName);
-
-builder.Services.AddSingleton(database);
-
-builder.WebHost.UseUrls("http://localhost:5001");
-
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 app.UseSwagger();
-app.UseSwaggerUI(c => 
+app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "PTT Audio API v1");
     c.RoutePrefix = string.Empty;
 });
 
-app.UseAuthorization();
 app.MapControllers();
+
+// Your original code starts here
+var mongoClient = new MongoClient(Constants.MongoConnectionString);
+var database = mongoClient.GetDatabase(Constants.DatabaseName);
 
 var clientManager = new ClientManager();
 var gridFsManager = new GridFsManager(database);
 var transmitAudio = new TransmitAudio(clientManager);
 var receiveAudio = new ReceiveAudio(transmitAudio, gridFsManager);
 
-var accountService = app.Services.GetRequiredService<AccountService>();
-var channelService = app.Services.GetRequiredService<ChannelService>();
-var volumeService = app.Services.GetRequiredService<VolumeService>();
-var frequencyService = app.Services.GetRequiredService<FrequencyService>();
+var accountService = new AccountService(database);
+var channelService = new ChannelService(database);
+var volumeService = new VolumeService(database);
+var frequencyService = new FrequencyService(database);
 
 var webSocketServer = new WebSocketServer(Constants.WebSocketServerPort, clientManager, receiveAudio, database);
 var serverOptions = new ServerOptions(clientManager, webSocketServer);
@@ -66,7 +58,7 @@ httpListener.Prefixes.Add("http://localhost:5000/");
 httpListener.Start();
 
 Console.WriteLine(Constants.StartedConnection);
-Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5001");
+Console.WriteLine($"{Constants.ServerConnectionPoint} http://localhost:5000");
 
 var httpRequestHandler = new HttpRequestHandler(clientManager, 
     accountService, channelService, 
@@ -83,7 +75,8 @@ _ = Task.Run(async () =>
 
 var webSocketServerTask = webSocketServer.StartAsync();
 
-Task.Run(() => app.Run());
+// Run both the original server and the Swagger UI
+Task.Run(() => app.Run("http://localhost:5001"));
 
 bool continueRunning = true;
 while (continueRunning)
